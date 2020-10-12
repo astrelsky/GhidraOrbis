@@ -1,0 +1,84 @@
+// Builds a Ghidra Extension for a given Ghidra installation.
+//
+// An absolute path to the Ghidra installation directory must be supplied either by setting the
+// GHIDRA_INSTALL_DIR environment variable or Gradle project property:
+//
+//     > export GHIDRA_INSTALL_DIR=<Absolute path to Ghidra>
+//     > gradle
+//
+//         or
+//
+//     > gradle -PGHIDRA_INSTALL_DIR=<Absolute path to Ghidra>
+//
+// Gradle should be invoked from the directory of the project to build.  Please see the
+// application.gradle.version property in <GHIDRA_INSTALL_DIR>/Ghidra/application.properties
+// for the correction version of Gradle to use for the Ghidra installation you specify.
+
+//----------------------START "DO NOT MODIFY" SECTION------------------------------
+apply plugin: 'java'
+apply plugin: 'eclipse'
+def ghidraInstallDir
+
+if (System.env.GHIDRA_INSTALL_DIR) {
+	ghidraInstallDir = System.env.GHIDRA_INSTALL_DIR
+}
+else if (project.hasProperty("GHIDRA_INSTALL_DIR")) {
+	ghidraInstallDir = project.getProperty("GHIDRA_INSTALL_DIR")
+}
+
+if (ghidraInstallDir) {
+	apply from: new File(ghidraInstallDir).getCanonicalPath() + "/support/buildExtension.gradle"
+}
+else {
+	throw new GradleException("GHIDRA_INSTALL_DIR is not defined!")
+}
+//----------------------END "DO NOT MODIFY" SECTION-------------------------------
+
+repositories { mavenCentral() }
+
+dependencies {
+	testCompile "org.hamcrest:hamcrest-all:1.3"
+	testCompile "org.jmockit:jmockit:1.44"
+	testCompile "junit:junit:4.12"
+	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Configurations', include: "**/*.jar")
+	compile fileTree(dir: ghidraInstallDir + '/Ghidra/Extensions',
+					 include: "**/*.jar", exclude: project.name + '**')
+	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Framework', include: "**/*.jar")
+	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Features', include: "**/*.jar")
+	compileOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Processors', include: "**/*.jar")
+	runtimeOnly fileTree(dir: 'C:\\Users\\astre\\.ghidra\\.ghidra_9.2_DEV\\Extensions',
+						 include: "**/*.jar", exclude: project.name + '**')
+						 runtimeOnly "org.apache.commons:commons-lang3:3.9"
+}
+
+eclipse {
+    classpath {
+        downloadJavadoc = true
+        downloadSources = true
+    }
+}
+
+eclipse.classpath.file.whenMerged {
+	File javaDoc = new File(ghidraInstallDir+"/docs/GhidraAPI_javadoc.zip");
+	for (entry in entries) {
+		if (entry.path.contains('jar')) {
+			//File sources = new File(entry.path.replace(".jar", "-sources.jar"));
+			//String docs = new File(entry.path.replace(".jar", "-javadoc.jar"));
+			File folder = new File(entry.getPath()).getParentFile();
+			for (File file : folder.listFiles()) {
+				if (file.getName().endsWith(".zip")) {
+					if (file.getName().contains("-src")) {
+						entry.setSourcePath(it.fileReference(file));
+					}
+					entry.setJavadocPath(it.fileReference(javaDoc));
+				}
+			}
+		}
+	}
+}
+
+buildExtension {
+	exclude '.vscode'
+	exclude 'gradle*'
+	exclude '.editorconfig'
+}
