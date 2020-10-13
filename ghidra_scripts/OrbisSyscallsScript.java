@@ -158,13 +158,15 @@ public class OrbisSyscallsScript extends GhidraScript {
 			Long offset = entry.getValue();
 			Address callTarget = syscallSpace.getAddress(offset);
 			Function callee = currentProgram.getFunctionManager().getFunctionAt(callTarget);
+			String funcName = "syscall_" + String.format("%08X", offset);
 			if (callee == null) {
-				String funcName = "syscall_" + String.format("%08X", offset);
-				if (syscallNumbersToNames.get(offset) != null) {
+				if (syscallNumbersToNames.containsKey(offset)) {
 					funcName = syscallNumbersToNames.get(offset);
 				}
 				callee = createFunction(callTarget, funcName);
 				callee.setCallingConvention(callingConvention);
+			} else if (syscallNumbersToNames.containsKey(offset)) {
+				callee.setName(syscallNumbersToNames.get(offset), SourceType.USER_DEFINED);
 			}
 			Reference ref = currentProgram.getReferenceManager().addMemoryReference(callSite,
 				callTarget, overrideType, SourceType.USER_DEFINED, Reference.MNEMONIC);
