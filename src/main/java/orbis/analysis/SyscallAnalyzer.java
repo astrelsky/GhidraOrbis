@@ -39,11 +39,7 @@ public final class SyscallAnalyzer extends AbstractAnalyzer {
 
 	@Override
 	public boolean canAnalyze(Program program) {
-		if (OrbisUtil.isOrbisProgram(program)) {
-			// this is lazy but will do for now
-			return program.getMinAddress().getOffset() < 0;
-		}
-		return false;
+		return OrbisUtil.isOrbisKernel(program);
 	}
 
 	@Override

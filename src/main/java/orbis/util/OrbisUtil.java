@@ -17,6 +17,14 @@ public class OrbisUtil {
 		return program.getUsrPropertyManager().getVoidPropertyMap("orbis") != null;
 	}
 
+	public static boolean isOrbisKernel(Program program) {
+		if (isOrbisProgram(program)) {
+			// this is lazy but will do for now
+			return program.getMinAddress().getOffset() < 0;
+		}
+		return false;
+	}
+
 	public static MemoryBlock getSpecialBlock(Program program) {
 		return program.getMemory().getBlock(SCE_SPECIAL_SECTION);
 	}

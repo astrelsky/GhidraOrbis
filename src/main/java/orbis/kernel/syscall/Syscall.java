@@ -8,7 +8,7 @@ import ghidra.program.model.listing.Listing;
 
 public final class Syscall {
 
-	private static final int FUNCTION_ORDINAL = 1;
+	public static final int FUNCTION_ORDINAL = 1;
 
 	private final Data data;
 
