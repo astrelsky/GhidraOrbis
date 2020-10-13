@@ -3,6 +3,7 @@ package orbis.elf;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.plugin.exceptionhandlers.gcc.sections.EhFrameHeaderSection;
+import ghidra.app.util.bin.BinaryReader;
 import ghidra.app.util.bin.format.elf.*;
 import ghidra.app.util.bin.format.elf.ElfDynamicType.ElfDynamicValueType;
 import ghidra.app.util.bin.format.elf.extend.ElfExtension;
@@ -21,6 +22,7 @@ import ghidra.util.exception.InvalidInputException;
 import ghidra.util.task.TaskMonitor;
 
 import orbis.data.OrbisDataUtils;
+import orbis.db.ImportManager;
 import orbis.util.OrbisUtil;
 
 import static ghidra.app.util.bin.format.elf.ElfDynamicType.*;
@@ -29,6 +31,7 @@ public class OrbisElfExtension extends ElfExtension {
 
 	private static final String EH_FRAME = ".eh_frame";
 	private static final String EH_FRAME_HDR = EH_FRAME + "_hdr";
+	private static final String PRX_LIB_EXTENSION = ".prx";
 	private static final int PARAM_SIZE_ORDINAL = 2;
 	public static final int DT_SCE_STRTAB_TAG = 0x61000035;
 	public static final int DT_SCE_STRSZ_TAG = 0x61000037;
@@ -70,7 +73,7 @@ public class OrbisElfExtension extends ElfExtension {
 	public static final ElfDynamicType DT_SCE_MODULE_INFO = new ElfDynamicType(
 		0x6100000D, "SCE_MODULE_INFO", "", ElfDynamicValueType.VALUE);
 	public static final ElfDynamicType DT_SCE_NEEDED_MODULE = new ElfDynamicType(
-		0x6100000F, "SCE_NEEDED_MODULE", "", ElfDynamicValueType.ADDRESS);
+		0x6100000F, "SCE_NEEDED_MODULE", "", ElfDynamicValueType.VALUE);
 	public static final ElfDynamicType DT_SCE_MODULE_ATTR = new ElfDynamicType(
 		0x61000011, "SCE_MODULE_ATTR", "", ElfDynamicValueType.VALUE);
 	public static final ElfDynamicType DT_SCE_EXPORT_LIB = new ElfDynamicType(
@@ -150,6 +153,7 @@ public class OrbisElfExtension extends ElfExtension {
 		if (table != null) {
 			try {
 				splitDynamicSegment(helper, monitor);
+				setupLibraryMap(helper, monitor);
 			} catch (CancelledException e) {
 				throw e;
 			} catch (Exception e) {
@@ -165,6 +169,22 @@ public class OrbisElfExtension extends ElfExtension {
 			throw e;
 		} catch (Exception e) {
 			helper.getLog().appendException(e);
+		}
+	}
+
+	private void setupLibraryMap(ElfLoadHelper helper, TaskMonitor monitor) throws Exception {
+		ImportManager man = new ImportManager(helper.getProgram());
+		OrbisElfHeader elf = (OrbisElfHeader) helper.getElfHeader();
+		ElfDynamicTable table = elf.getDynamicTable();
+		ElfStringTable stringTable = elf.getDynamicStringTable();
+		BinaryReader reader = elf.getReader();
+		for (ElfDynamic dynamic : table.getDynamics(DT_SCE_IMPORT_LIB)) {
+			monitor.checkCanceled();
+			long value = dynamic.getValue();
+			long offset =  value & 0xffffffffL;
+			long id = value >> 48;
+			String libName = stringTable.readString(reader, offset) + PRX_LIB_EXTENSION;
+			man.addLibrary(libName, id);
 		}
 	}
 

@@ -15,6 +15,7 @@ import ghidra.util.exception.InvalidInputException;
 import ghidra.util.task.TaskMonitor;
 
 import orbis.util.OrbisUtil;
+import orbis.db.ImportManager;
 import orbis.nid.NidDatabaseFactory;
 
 public class NIDAnalyzer extends AbstractAnalyzer {
@@ -63,57 +64,64 @@ public class NIDAnalyzer extends AbstractAnalyzer {
 		private final Map<String, String> db;
 		private final MessageLog log;
 		private final ExternalManager man;
-		private final String[] libraries;
+		private final ImportManager importMan;
+
 		NIDResolver(Program program, MessageLog log) {
 			Map<String, String> db = Collections.emptyMap();
+			ImportManager importMan = null;
 			try {
 				db = NidDatabaseFactory.getNidDatabase();
+				importMan = new ImportManager(program);
 			} catch (Exception e) {
 				log.appendException(e);
 			}
 			this.db = db;
 			this.log = log;
 			this.man = program.getExternalManager();
-			this.libraries = man.getExternalLibraryNames();
+			this.importMan = importMan;
 		}
 
-		void resolve(Symbol s) {
+		void resolve(Symbol s) throws Exception {
 			Namespace ns = s.getParentNamespace();
 			String name = s.getName();
-			if (name.length() != 15) {
+			if (name.length() < 11 || name.length() > 15) {
 				return;
 			}
+			if (name.charAt(11) != '#') {
+				return;
+			}
+			int i = getIndex(name.charAt(12));
 			if (name.charAt(13) == '#') {
-				int i = getIndex(name.charAt(12))+1;
-				if (i < libraries.length) {
-					ns = man.getExternalLibrary(libraries[i]);
+				if (importMan.containsLibrary(i)) {
+					String lib = importMan.getLibraryName(i);
+					ns = man.getExternalLibrary(lib);
 				}
 			} else if (name.charAt(14) == '#') {
-				int i = getIndex(name.charAt(12)) + getIndex(name.charAt(13))+1;
-				if (i < libraries.length) {
-					ns = man.getExternalLibrary(libraries[i]);
+				i += getIndex(name.charAt(13));
+				if (importMan.containsLibrary(i)) {
+					String lib = importMan.getLibraryName(i);
+					ns = man.getExternalLibrary(lib);
 				}
 			} else {
 				return;
 			}
 			name = name.substring(0, 11);
 			if (db.containsKey(name)) {
-				String entry = db.get(name);
-				try {
-					s.setNameAndNamespace(entry, ns, SourceType.IMPORTED);
-				} catch (InvalidInputException e) {
-					try {
-						s.setName(entry, SourceType.IMPORTED);
-					} catch (Exception ex) {
-						log.appendException(ex);
-					}
-				} catch (Exception e) {
-					log.appendException(e);
+				name = db.get(name);
+			}
+			try {
+				if (ns == null) {
+					ns = s.getProgram().getGlobalNamespace();
 				}
-				if (entry.equals("__stack_chk_fail")) {
+				s.setNameAndNamespace(name, ns, SourceType.IMPORTED);
+				if (name.equals("__stack_chk_fail")) {
 					Function fun = (Function) s.getObject();
 					fun.setNoReturn(true);
 				}
+			} catch (InvalidInputException e) {
+				// occurs for data
+			} catch (Exception e) {
+				log.appendException(e);
 			}
 		}
 
@@ -125,10 +133,10 @@ public class NIDAnalyzer extends AbstractAnalyzer {
 				return c - '0' + 52;
 			}
 			if (c == '+') {
-				return 63;
+				return 62;
 			}
 			if (c == '-') {
-				return 64;
+				return 63;
 			}
 			return -1;
 		}

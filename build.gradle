@@ -75,6 +75,11 @@ eclipse.classpath.file.whenMerged {
 			}
 		}
 	}
+	entries.add(
+		new org.gradle.plugins.ide.eclipse.model.Library(
+			it.fileReference(new File(projectDir, '/bin'))
+		)
+	)
 }
 
 buildExtension {
