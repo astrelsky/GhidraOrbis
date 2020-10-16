@@ -41,6 +41,9 @@ public class GhidraOrbisElfLoader extends ElfLoader {
 		}
 		switch(type) {
 			case OrbisElfHeader.ET_SCE_KERNEL:
+				if (header.findImageBase() >= 0) {
+					return loadSpecs;
+				}
 			case OrbisElfHeader.ET_SCE_EXEC:
 			case OrbisElfHeader.ET_SCE_REPLAY_EXEC:
 			case OrbisElfHeader.ET_SCE_RELEXEC:
