@@ -162,8 +162,10 @@ public class OrbisElfExtension extends ElfExtension {
 			markupFingerprint(helper);
 		}
 		try {
-			splitSegments(helper, monitor);
-			fixEhFrame(helper, monitor);
+			if (elf.getSections().length == 0) {
+				splitSegments(helper, monitor);
+				fixEhFrame(helper, monitor);
+			}
 			markupParamSection(helper);
 		} catch (CancelledException e) {
 			throw e;

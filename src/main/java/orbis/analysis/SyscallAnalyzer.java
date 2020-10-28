@@ -3,7 +3,6 @@ package orbis.analysis;
 import java.util.Collection;
 import java.util.List;
 
-import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalyzerType;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.program.model.address.Address;
@@ -20,12 +19,11 @@ import ghidra.util.task.TaskMonitor;
 import orbis.kernel.syscall.Syscall;
 import orbis.kernel.syscall.SyscallNameTable;
 import orbis.kernel.syscall.SyscallTable;
-import orbis.util.OrbisUtil;
 
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
 
 // Znullptr's syscalls
-public final class SyscallAnalyzer extends AbstractAnalyzer {
+public final class SyscallAnalyzer extends AbstractKernelAnalyzer {
 
 	private static final String NAME = "ORBIS Syscall Analyzer";
 	private static final String DESCRIPTION =
@@ -35,11 +33,6 @@ public final class SyscallAnalyzer extends AbstractAnalyzer {
 	public SyscallAnalyzer() {
 		super(NAME, DESCRIPTION, AnalyzerType.BYTE_ANALYZER);
 		setDefaultEnablement(true);
-	}
-
-	@Override
-	public boolean canAnalyze(Program program) {
-		return OrbisUtil.isOrbisKernel(program);
 	}
 
 	@Override
