@@ -5,8 +5,6 @@
 	<Entry obf="3o8I+hLrIUw" sym="mono_aot_mscorlibstatic_rgctx_trampolines"/>
 	<Entry obf="WfGqlLOY9go" sym="mono_aot_mscorlibgsharedvt_arg_trampolines"/>
 	<Entry obf="+JpQsX8mMEw" sym="mono_aot_Mono_CSharpplt"/>
-	<Entry obf="+BaOKcng8g88" sym="module_start"/>
-	<Entry obf="+BaOKcng8g88" sym="module_start"/>
 	<Entry obf="ys1W6EwuVw4" sym="__absvdi2"/>
 	<Entry obf="2HED9ow7Zjc" sym="__absvsi2"/>
 	<Entry obf="v9XNTmsmz+M" sym="__absvti2"/>
