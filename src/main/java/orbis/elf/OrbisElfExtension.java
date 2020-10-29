@@ -1,21 +1,20 @@
 package orbis.elf;
 
-import ghidra.app.cmd.disassemble.DisassembleCommand;
-import ghidra.app.cmd.function.CreateFunctionCmd;
+import java.lang.reflect.Field;
+
 import ghidra.app.plugin.exceptionhandlers.gcc.sections.EhFrameHeaderSection;
 import ghidra.app.util.bin.BinaryReader;
 import ghidra.app.util.bin.format.elf.*;
 import ghidra.app.util.bin.format.elf.ElfDynamicType.ElfDynamicValueType;
 import ghidra.app.util.bin.format.elf.extend.ElfExtension;
-import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.data.*;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.scalar.Scalar;
 import ghidra.program.model.symbol.Reference;
-import ghidra.program.model.symbol.SourceType;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.InvalidInputException;
@@ -23,9 +22,10 @@ import ghidra.util.task.TaskMonitor;
 
 import orbis.data.OrbisDataUtils;
 import orbis.db.ImportManager;
+import orbis.elf.fragment.DynamicFragmentBuilder;
+import orbis.elf.fragment.FragmentBuilder;
+import orbis.elf.fragment.ProgramHeaderFragmentBuilder;
 import orbis.util.OrbisUtil;
-
-import static ghidra.app.util.bin.format.elf.ElfDynamicType.*;
 
 public class OrbisElfExtension extends ElfExtension {
 
@@ -59,15 +59,11 @@ public class OrbisElfExtension extends ElfExtension {
 	public static final ElfProgramHeaderType PT_SCE_SEGSYM = new ElfProgramHeaderType(
 		0x700000A8, "SCE_SEGSYM", "");
 
-	private static final SegmentSection[] SEGMENT_SECTIONS = new SegmentSection[]{
-		new SegmentSection(ElfProgramHeaderConstants.PT_INTERP, ".interp"),
-	};
-
 	// dynamic types
 	public static final ElfDynamicType DT_SCE_IDTABENTSZ = new ElfDynamicType(
 		0x61000005, "SCE_IDTABENTSZ", "", ElfDynamicValueType.VALUE);
 	public static final ElfDynamicType DT_SCE_FINGERPRINT = new ElfDynamicType(
-		0x61000007, "SCE_FINGERPRINT", "", ElfDynamicValueType.VALUE);
+		0x61000007, "SCE_FINGERPRINT", "", ElfDynamicValueType.ADDRESS);
 	public static final ElfDynamicType DT_SCE_ORIGINAL_FILENAME = new ElfDynamicType(
 		0x61000009, "SCE_ORIGINAL_FILENAME", "", ElfDynamicValueType.STRING);
 	public static final ElfDynamicType DT_SCE_MODULE_INFO = new ElfDynamicType(
@@ -123,14 +119,6 @@ public class OrbisElfExtension extends ElfExtension {
 	public static final ElfDynamicType DT_SCE_HIOS = new ElfDynamicType(
 		0x6FFFF000, "SCE_HIOS", "", ElfDynamicValueType.VALUE);
 
-	private static final DynamicSegmentSection[] DYNAMIC_SECTIONS = new DynamicSegmentSection[]{
-		new DynamicSegmentSection(DT_INIT.value, ".init", -2),
-		new DynamicSegmentSection(DT_FINI.value, ".fini", -2),
-		new DynamicSegmentSection(DT_INIT_ARRAY.value, ".init_array", DT_INIT_ARRAYSZ.value),
-		new DynamicSegmentSection(DT_FINI_ARRAY.value, ".fini_array", DT_FINI_ARRAYSZ.value),
-		new DynamicSegmentSection(DT_SCE_PLTGOT.value, ".plt.got", -1),
-	};
-
 	@Override
 	public boolean canHandle(ElfHeader elf) {
 		return elf instanceof OrbisElfHeader;
@@ -152,7 +140,13 @@ public class OrbisElfExtension extends ElfExtension {
 		ElfDynamicTable table = elf.getDynamicTable();
 		if (table != null) {
 			try {
-				splitDynamicSegment(helper, monitor);
+				for (ElfDynamic dynamic : table.getDynamics()) {
+					monitor.checkCanceled();
+					if (DynamicFragmentBuilder.canHandle(dynamic.getTagType())) {
+						FragmentBuilder builder = new DynamicFragmentBuilder(helper, dynamic);
+						builder.move();
+					}
+				}
 				setupLibraryMap(helper, monitor);
 			} catch (CancelledException e) {
 				throw e;
@@ -163,14 +157,64 @@ public class OrbisElfExtension extends ElfExtension {
 		}
 		try {
 			if (elf.getSections().length == 0) {
-				splitSegments(helper, monitor);
+				int i = 0;
+				for (ElfProgramHeader phdr : elf.getProgramHeaders()) {
+					monitor.checkCanceled();
+					if (phdr.getType() == ElfProgramHeaderConstants.PT_GNU_EH_FRAME) {
+						continue;
+					}
+					FragmentBuilder builder = new ProgramHeaderFragmentBuilder(helper, phdr, i++);
+					builder.move();
+				}
 				fixEhFrame(helper, monitor);
+				splitElfHeader(helper, monitor);
+				fixDynamicSection(helper);
 			}
 			markupParamSection(helper);
 		} catch (CancelledException e) {
 			throw e;
 		} catch (Exception e) {
 			helper.getLog().appendException(e);
+		}
+	}
+
+	private void fixDynamicSection(ElfLoadHelper helper) throws Exception {
+		Listing listing = helper.getProgram().getListing();
+		ProgramModule root = listing.getDefaultRootModule();
+		if (listing.getFragment(root.getTreeName(), ".sce_special") != null) {
+			ProgramFragment frag = listing.getFragment(root.getTreeName(), ".dynamic");
+			Field f = frag.getClass().getDeclaredField("addrSet");
+			f.setAccessible(true);
+			AddressSet set = (AddressSet) f.get(frag);
+			f.setAccessible(false);
+			set.clear();
+			root.removeChild(".dynamic");
+		}
+	}
+
+	private void splitElfHeader(ElfLoadHelper helper, TaskMonitor monitor) throws Exception {
+		Program program = helper.getProgram();
+		Listing listing = program.getListing();
+		ProgramModule root = listing.getDefaultRootModule();
+		if (listing.getFragment(root.getTreeName(), "_elfHeader") != null) {
+			return;
+		}
+		for (Data data : listing.getDefinedData(true)) {
+			monitor.checkCanceled();
+			if (data.getDataType().getName().equals("Elf64_Ehdr")) {
+				Memory mem = program.getMemory();
+				MemoryBlock block = mem.getBlock(data.getAddress());
+				String blockName = block.getName();
+				block.setExecute(false);
+				block.setName("_elfHeader");
+				block = mem.getBlock(data.getAddress());
+				ProgramFragment frag = root.createFragment("_elfHeader");
+				frag.move(block.getStart(), block.getEnd());
+				frag = listing.getFragment(root.getTreeName(), blockName);
+				block = mem.getBlock(frag.getMinAddress());
+				block.setName(frag.getName());
+				return;
+			}
 		}
 	}
 
@@ -214,71 +258,6 @@ public class OrbisElfExtension extends ElfExtension {
 			Scalar count = (Scalar) data.getComponent(PARAM_SIZE_ORDINAL).getValue();
 			ArrayDataType array = new ArrayDataType(dt, (int) count.getValue(), dt.getLength());
 			listing.createData(data.getAddress().add(flexComp.getOffset()), array);
-		}
-	}
-
-	private void splitSegments(ElfLoadHelper helper, TaskMonitor monitor) throws Exception {
-		OrbisElfHeader elf = (OrbisElfHeader) helper.getElfHeader();
-		Program program = helper.getProgram();
-		for (SegmentSection seg : SEGMENT_SECTIONS) {
-			monitor.checkCanceled();
-			for (ElfProgramHeader phdr : elf.getProgramHeaders(seg.type)) {
-				monitor.checkCanceled();
-				Address start = helper.getDefaultAddress(phdr.getVirtualAddress());
-				seg.move(program, start, phdr.getMemorySize());
-				break;
-			}
-		}
-	}
-
-	private void splitDynamicSegment(ElfLoadHelper helper, TaskMonitor monitor)
-			throws Exception {
-		OrbisElfHeader elf = (OrbisElfHeader) helper.getElfHeader();
-		ElfDynamicTable table = elf.getDynamicTable();
-		Program program = helper.getProgram();
-		Memory mem = program.getMemory();
-		for (DynamicSegmentSection seg : DYNAMIC_SECTIONS) {
-			monitor.checkCanceled();
-			for (ElfDynamic dynamic : table.getDynamics(seg.type)) {
-				monitor.checkCanceled();
-				Address start = helper.getDefaultAddress(dynamic.getValue());
-				long size = -1;
-				if (seg.sizeType == -1) {
-					MemoryBlock block = mem.getBlock(start);
-					size = block.getEnd().subtract(start);
-				} else if (seg.sizeType == -2) {
-					BackgroundCommand cmd = new DisassembleCommand(start, null, true);
-					if (cmd.applyTo(program, monitor)) {
-						cmd = new CreateFunctionCmd(start);
-						cmd.applyTo(program, monitor);
-						Function fun = ((CreateFunctionCmd) cmd).getFunction();
-						fun.setName(seg.name.replace(".", "_"), SourceType.IMPORTED);
-						size = fun.getBody().getMaxAddress().subtract(start);
-						if (seg.type == DT_FINI.value) {
-							Address roAddress = fun.getBody().getMaxAddress().next();
-							MemoryBlock block = mem.getBlock(roAddress);
-							long roLength = block.getEnd().subtract(roAddress);
-							SegmentSection roSeg = new SegmentSection(-1, ".rodata");
-							roSeg.move(program, roAddress, roLength);
-						}
-					}
-				} else {
-					for (ElfDynamic sizeDynamic : table.getDynamics(seg.sizeType)) {
-						monitor.checkCanceled();
-						size = sizeDynamic.getValue();
-						break;
-					}
-				}
-				if (size <= 0) {
-					continue;
-				}
-				seg.move(program, start, size);
-				if (seg.sizeType == -2) {
-					MemoryBlock block = mem.getBlock(start);
-					block.setExecute(true);
-				}
-				break;
-			}
 		}
 	}
 
@@ -329,57 +308,6 @@ public class OrbisElfExtension extends ElfExtension {
 			} catch (Exception e) {
 				helper.log(e);
 			}
-		}
-	}
-
-	private static class SegmentSection {
-		protected final int type;
-		protected final String name;
-
-		SegmentSection(int type, String name) {
-			this.type = type;
-			this.name = name;
-		}
-
-		void move(Program program, Address start, long size) throws Exception {
-			Memory mem = program.getMemory();
-			Listing listing = program.getListing();
-			ProgramModule root = listing.getDefaultRootModule();
-			MemoryBlock block = mem.getBlock(start);
-			if (start.equals(block.getStart())) {
-				String name = block.getName();
-				Address end = start.add(size).next();
-				mem.split(block, end);
-				block = mem.getBlock(start);
-				block.setName(this.name);
-				ProgramFragment frag = root.createFragment(this.name);
-				frag.move(start, block.getEnd());
-				block = mem.getBlock(end);
-				block.setName(name);
-				frag = program.getListing().getFragment(root.getTreeName(), name);
-				frag.move(block.getStart(), block.getEnd());
-			} else {
-				mem.split(block, start);
-				ProgramFragment frag =
-					program.getListing().getFragment(root.getTreeName(), block.getName());
-				frag.move(block.getStart(), block.getEnd());
-				block = mem.getBlock(start);
-				block.setName(this.name);
-				frag = root.createFragment(this.name);
-				frag.move(start, block.getEnd());
-			}
-			block = mem.getBlock(start);
-			block.setExecute(false);
-			block.setWrite(false);
-		}
-	}
-
-	private static class DynamicSegmentSection extends SegmentSection {
-		private final int sizeType;
-
-		DynamicSegmentSection(int type, String name, int sizeType) {
-			super(type, name);
-			this.sizeType = sizeType;
 		}
 	}
 

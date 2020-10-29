@@ -55,7 +55,7 @@ public class OrbisElfProgramBuilder extends DefaultElfProgramBuilder {
 
 	@Override
 	protected void load(TaskMonitor monitor) throws IOException, CancelledException {
-		ElfHeader elf = getElfHeader();
+		OrbisElfHeader elf = getElfHeader();
 		Memory memory = getMemory();
 		monitor.setMessage("Completing ELF header parsing...");
 		monitor.setCancelEnabled(false);
@@ -80,13 +80,11 @@ public class OrbisElfProgramBuilder extends DefaultElfProgramBuilder {
 			}
 
 			// process headers and define "section" within memory elfProgramBuilder
-			if (elf.getSections().length == 0) {
-				processProgramHeadersAsSections(monitor);
-			} else {
-				processProgramHeaders(monitor);
-				processSectionHeaders(monitor);
+			processProgramHeaders(monitor);
+			processSectionHeaders(monitor);
+			if (!elf.isKernel()) {
+				processDynlibData();
 			}
-			processDynlibData();
 
 			resolve(monitor);
 
@@ -254,95 +252,6 @@ public class OrbisElfProgramBuilder extends DefaultElfProgramBuilder {
 			String name = getProgramHeaderName(elfProgramHeader, i);
 			processProgramHeader(elfProgramHeader, name);
 		}
-	}
-
-	private void processProgramHeadersAsSections(TaskMonitor monitor) throws CancelledException {
-		ElfHeader elf = getElfHeader();
-		monitor.setMessage("Processing section headers...");
-		ElfProgramHeader[] phdrs = elf.getProgramHeaders();
-		for (int i = 0; i < phdrs.length; i++) {
-			monitor.checkCanceled();
-			switch (phdrs[i].getType()) {
-				case ElfProgramHeaderConstants.PT_GNU_EH_FRAME:
-				case ElfProgramHeaderConstants.PT_INTERP:
-					// handle this in the elf extension
-					continue;
-				default:
-					break;
-			}
-			processSectionHeader(phdrs[i], i);
-		}
-	}
-
-	private void processSectionHeader(ElfProgramHeader phdr, int i)
-			throws AddressOutOfBoundsException {
-		String blockName = getProgramHeaderName(phdr, i);
-		long sectionByteLength = phdr.getAdjustedLoadSize(); // size in bytes
-		long loadOffset = phdr.getOffset(); // file offset in bytes
-
-		Address address = null;
-
-		if (sectionByteLength == 0) {
-			log("Skipping empty section [" + blockName + "]");
-			return;
-		}
-
-		if (address == null) {
-			address = getSectionLoadAddress(phdr);
-		}
-		AddressSpace space = address.getAddressSpace();
-
-		if (!space.isValidRange(address.getOffset(), sectionByteLength)) {
-			log("Skipping unloadable section [" + blockName +
-				"] at address " + address.toString(true) + " (size=" + sectionByteLength + ")");
-			return;
-		}
-
-		try {
-			String comment =
-				getComment(phdr);
-				addInitializedMemorySection(phdr, loadOffset, sectionByteLength,
-					address, blockName, phdr.isRead(), phdr.isWrite(),
-					phdr.isExecute(), comment, false,
-					phdr.getType() == ElfProgramHeaderConstants.PT_LOAD);
-		}
-		catch (AddressOverflowException e) {
-			log("Failed to load section [" + blockName+ "]: " +
-				getMessage(e));
-		}
-	}
-
-	private AddressSpace getSectionAddressSpace(ElfProgramHeader phdr) {
-		Program program = getProgram();
-		if (phdr.isExecute()) {
-			return program.getAddressFactory().getDefaultAddressSpace();
-		}
-		return program.getLanguage().getDefaultDataSpace();
-	}
-
-	private Address getSectionLoadAddress(ElfProgramHeader phdr) {
-		AddressSpace space = getSectionAddressSpace(phdr);
-		if (!space.isLoadedMemorySpace()) {
-			// handle non-loaded sections into the OTHER space
-			long addrWordOffset = phdr.getVirtualAddress();
-			return space.getTruncatedAddress(addrWordOffset, true);
-		}
-
-		return getPreferredSectionAddress(phdr);
-	}
-
-	private Address getPreferredSectionAddress(ElfProgramHeader phdr) {
-		Program program = getProgram();
-
-		AddressSpace space = getSectionAddressSpace(phdr);
-
-		long addrWordOffset = phdr.getVirtualAddress();
-
-		if (space == program.getAddressFactory().getDefaultAddressSpace()) {
-			addrWordOffset += getImageBaseWordAdjustmentOffset();
-		}
-
-		return space.getTruncatedAddress(addrWordOffset, true);
 	}
 
 	public void splitConflictFragments(TaskMonitor monitor) throws CancelledException {

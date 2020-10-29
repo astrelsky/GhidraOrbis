@@ -62,17 +62,24 @@ public class OrbisElfHeader extends ElfHeader {
 
 		parseSectionHeaders();
 
-		parseDynamicTable();
-
-		invoke("parseGNU_d");
-		invoke("parseGNU_r");
+		if (isKernel()) {
+			invoke("parseDynamicTable");
+			invoke("parseStringTables");
+			invoke("parseDynamicLibraryNames");
+			invoke("parseSymbolTables");
+			invoke("parseRelocationTables");
+			invoke("parseGNU_d");
+			invoke("parseGNU_r");
+		} else {
+			parseDynamicTable();
+		}
 	}
 
 	public boolean isKernel() {
 		return e_type() == ET_SCE_KERNEL;
 	}
 
-	private long getDynamicAddrOffset(long offset) {
+	public long getDynamicAddrOffset(long offset) {
 		offset = adjustAddressForPrelink(offset);
 		if (isKernel()) {
 			ElfProgramHeader text = getTextSegment();
