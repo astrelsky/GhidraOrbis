@@ -2,6 +2,7 @@ package orbis.elf.fragment;
 
 import ghidra.app.util.bin.format.elf.ElfLoadHelper;
 import ghidra.app.util.bin.format.elf.ElfProgramHeader;
+import ghidra.app.util.bin.format.elf.ElfProgramHeaderConstants;
 import ghidra.program.model.address.Address;
 
 import orbis.util.OrbisUtil;
@@ -33,6 +34,16 @@ public final class ProgramHeaderFragmentBuilder extends FragmentBuilder {
 	@Override
 	protected String getName() {
 		return name;
+	}
+
+	public static boolean canHandle(ElfProgramHeader phdr) {
+		switch (phdr.getType()) {
+			case ElfProgramHeaderConstants.PT_GNU_EH_FRAME:
+			case ElfProgramHeaderConstants.PT_DYNAMIC:
+				return false;
+			default:
+				return true;
+		}
 	}
 
 	private static String getProgramHeaderName(ElfProgramHeader phdr, int i) {

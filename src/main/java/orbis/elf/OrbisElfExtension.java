@@ -160,11 +160,11 @@ public class OrbisElfExtension extends ElfExtension {
 				int i = 0;
 				for (ElfProgramHeader phdr : elf.getProgramHeaders()) {
 					monitor.checkCanceled();
-					if (phdr.getType() == ElfProgramHeaderConstants.PT_GNU_EH_FRAME) {
-						continue;
+					if (ProgramHeaderFragmentBuilder.canHandle(phdr)) {
+						FragmentBuilder builder =
+							new ProgramHeaderFragmentBuilder(helper, phdr, i++);
+						builder.move();
 					}
-					FragmentBuilder builder = new ProgramHeaderFragmentBuilder(helper, phdr, i++);
-					builder.move();
 				}
 				fixEhFrame(helper, monitor);
 				splitElfHeader(helper, monitor);

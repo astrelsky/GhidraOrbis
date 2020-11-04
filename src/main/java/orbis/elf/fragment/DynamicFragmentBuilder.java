@@ -1,9 +1,10 @@
 package orbis.elf.fragment;
 
+import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.util.bin.format.elf.*;
 import ghidra.program.model.address.Address;
-import ghidra.program.model.listing.Function;
+import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.symbol.SourceType;
@@ -40,7 +41,7 @@ public final class DynamicFragmentBuilder extends FragmentBuilder {
 
 	@Override
 	protected long getSize() {
-		switch((int) dynamic.getValue()) {
+		switch((int) dynamic.getTag()) {
 			case DT_INIT_VALUE:
 			case DT_FINI_VALUE:
 				return getFunctionSize();
@@ -61,7 +62,7 @@ public final class DynamicFragmentBuilder extends FragmentBuilder {
 
 	@Override
 	protected String getName() {
-		switch((int) dynamic.getValue()) {
+		switch((int) dynamic.getTag()) {
 			case DT_INIT_VALUE:
 				return ".init";
 			case DT_FINI_VALUE:
@@ -80,8 +81,17 @@ public final class DynamicFragmentBuilder extends FragmentBuilder {
 	}
 
 	private Function getFunction() {
-		CreateFunctionCmd cmd = new CreateFunctionCmd(getStart());
-		cmd.applyTo(getHelper().getProgram());
+		Address start = getStart();
+		Program program = getHelper().getProgram();
+		Listing listing = program.getListing();
+		Function fun = listing.getFunctionAt(start);
+		if (fun != null) {
+			listing.removeFunction(start);
+		}
+		DisassembleCommand dCmd = new DisassembleCommand(start, null, false);
+		dCmd.applyTo(program);
+		CreateFunctionCmd cmd = new CreateFunctionCmd(start);
+		cmd.applyTo(program);
 		return cmd.getFunction();
 	}
 

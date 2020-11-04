@@ -59,6 +59,9 @@ public abstract class FragmentBuilder {
 			conflictBlock.setName(name+"_old");
 		}
 		block.setName(name);
+		if (name.equals(".text")) {
+			return;
+		}
 		ProgramFragment frag = listing.getFragment(root.getTreeName(), name);
 		if (frag == null) {
 			frag = root.createFragment(name);
