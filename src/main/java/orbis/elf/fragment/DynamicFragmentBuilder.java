@@ -88,7 +88,7 @@ public final class DynamicFragmentBuilder extends FragmentBuilder {
 		if (fun != null) {
 			listing.removeFunction(start);
 		}
-		DisassembleCommand dCmd = new DisassembleCommand(start, null, false);
+		DisassembleCommand dCmd = new DisassembleCommand(start, null, true);
 		dCmd.applyTo(program);
 		CreateFunctionCmd cmd = new CreateFunctionCmd(start);
 		cmd.applyTo(program);
