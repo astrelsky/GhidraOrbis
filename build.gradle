@@ -34,6 +34,8 @@ else {
 }
 //----------------------END "DO NOT MODIFY" SECTION-------------------------------
 
+def ghidraUserDir = System.getProperty("user.home") + "/.ghidra/.${DISTRO_PREFIX}_${RELEASE_NAME}"
+
 repositories { mavenCentral() }
 
 dependencies {
@@ -46,9 +48,9 @@ dependencies {
 	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Framework', include: "**/*.jar")
 	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Features', include: "**/*.jar")
 	compileOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Processors', include: "**/*.jar")
-	runtimeOnly fileTree(dir: 'C:\\Users\\astre\\.ghidra\\.ghidra_9.2_DEV\\Extensions',
-						 include: "**/*.jar", exclude: project.name + '**')
-						 runtimeOnly "org.apache.commons:commons-lang3:3.9"
+	runtimeOnly fileTree(dir: ghidraUserDir + "/Extensions",
+						 include: "**/*.jar", exclude: project.name)
+	runtimeOnly "org.apache.commons:commons-lang3:3.9"
 }
 
 eclipse {
@@ -62,8 +64,6 @@ eclipse.classpath.file.whenMerged {
 	File javaDoc = new File(ghidraInstallDir+"/docs/GhidraAPI_javadoc.zip");
 	for (entry in entries) {
 		if (entry.path.contains('jar')) {
-			//File sources = new File(entry.path.replace(".jar", "-sources.jar"));
-			//String docs = new File(entry.path.replace(".jar", "-javadoc.jar"));
 			File folder = new File(entry.getPath()).getParentFile();
 			for (File file : folder.listFiles()) {
 				if (file.getName().endsWith(".zip")) {
