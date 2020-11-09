@@ -171,10 +171,28 @@ public class OrbisElfExtension extends ElfExtension {
 				fixDynamicSection(helper);
 			}
 			markupParamSection(helper);
+			fixBlockNames(helper);
 		} catch (CancelledException e) {
 			throw e;
 		} catch (Exception e) {
 			helper.getLog().appendException(e);
+		}
+	}
+
+	private void fixBlockNames(ElfLoadHelper helper) throws Exception {
+		Program program = helper.getProgram();
+		Listing listing = program.getListing();
+		Memory mem = program.getMemory();
+		ProgramModule root = listing.getDefaultRootModule();
+		ProgramFragment frag = listing.getFragment(root.getTreeName(), ".text");
+		if (frag != null) {
+			MemoryBlock block = mem.getBlock(frag.getMinAddress());
+			block.setName(".text");
+		}
+		frag = listing.getFragment(root.getTreeName(), ".data");
+		if (frag != null) {
+			MemoryBlock block = mem.getBlock(frag.getMinAddress());
+			block.setName(".data");
 		}
 	}
 
