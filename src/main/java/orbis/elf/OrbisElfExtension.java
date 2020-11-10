@@ -211,6 +211,9 @@ public class OrbisElfExtension extends ElfExtension {
 			if (symbols.size() == 1) {
 				Symbol symbol = symbols.get(0);
 				Address symbolAddress = getSceSpecialAddress(symbol);
+				if (symbolAddress == null) {
+					return;
+				}
 				symbol.delete();
 				symTable.createLabel(symbolAddress, symbolName, SourceType.IMPORTED);
 			}
@@ -219,7 +222,11 @@ public class OrbisElfExtension extends ElfExtension {
 
 	private static Address getSceSpecialAddress(Symbol symbol) {
 		Memory mem = symbol.getProgram().getMemory();
-		AddressSpace space = mem.getBlock(".sce_special").getStart().getAddressSpace();
+		MemoryBlock block = mem.getBlock(".sce_special");
+		if (block == null) {
+			return null;
+		}
+		AddressSpace space = block.getStart().getAddressSpace();
 		return space.getAddress(symbol.getAddress().getOffset());
 	}
 
@@ -256,8 +263,10 @@ public class OrbisElfExtension extends ElfExtension {
 				ProgramFragment frag = root.createFragment("_elfHeader");
 				frag.move(block.getStart(), block.getEnd());
 				frag = listing.getFragment(root.getTreeName(), blockName);
-				block = mem.getBlock(frag.getMinAddress());
-				block.setName(frag.getName());
+				if (frag.getMinAddress() != null) {
+					block = mem.getBlock(frag.getMinAddress());
+					block.setName(frag.getName());
+				}
 				return;
 			}
 		}
