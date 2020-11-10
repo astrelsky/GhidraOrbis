@@ -123,7 +123,13 @@ public final class DynamicFragmentBuilder extends FragmentBuilder {
 
 	@Override
 	public void move() throws Exception {
-		super.move();
+		switch (dynamic.getTagType().value) {
+			case DT_FINI_VALUE:
+			case DT_INIT_VALUE:
+				break;
+			default:
+				super.move();
+		}
 		Memory mem = getHelper().getProgram().getMemory();
 		Address start = getStart();
 		if (start == null) {
@@ -134,6 +140,11 @@ public final class DynamicFragmentBuilder extends FragmentBuilder {
 				Function fun = getFunction();
 				Address roAddress = fun.getBody().getMaxAddress().next();
 				MemoryBlock block = mem.getBlock(roAddress);
+				mem.split(block, roAddress);
+				block = mem.getBlock(roAddress);
+				block.setName(".rodata");
+				block.setExecute(false);
+				block.setWrite(false);
 				long roLength = block.getEnd().subtract(roAddress);
 				FragmentBuilder builder =
 					new ReadOnlyDataFragmentBuilder(getHelper(), roAddress, roLength);
