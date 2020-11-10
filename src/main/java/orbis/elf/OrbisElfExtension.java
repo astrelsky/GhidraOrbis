@@ -1,6 +1,7 @@
 package orbis.elf;
 
 import java.lang.reflect.Field;
+import java.util.List;
 
 import ghidra.app.plugin.exceptionhandlers.gcc.sections.EhFrameHeaderSection;
 import ghidra.app.util.bin.BinaryReader;
@@ -9,12 +10,13 @@ import ghidra.app.util.bin.format.elf.ElfDynamicType.ElfDynamicValueType;
 import ghidra.app.util.bin.format.elf.extend.ElfExtension;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSet;
+import ghidra.program.model.address.AddressSpace;
 import ghidra.program.model.data.*;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.scalar.Scalar;
-import ghidra.program.model.symbol.Reference;
+import ghidra.program.model.symbol.*;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.InvalidInputException;
@@ -147,6 +149,7 @@ public class OrbisElfExtension extends ElfExtension {
 						builder.move();
 					}
 				}
+				fixDynamicLabels(helper, monitor);
 				setupLibraryMap(helper, monitor);
 			} catch (CancelledException e) {
 				throw e;
@@ -194,6 +197,30 @@ public class OrbisElfExtension extends ElfExtension {
 			MemoryBlock block = mem.getBlock(frag.getMinAddress());
 			block.setName(".data");
 		}
+	}
+
+	private void fixDynamicLabels(ElfLoadHelper helper, TaskMonitor monitor) throws Exception {
+		OrbisElfHeader elf = (OrbisElfHeader) helper.getElfHeader();
+		ElfDynamicTable table = elf.getDynamicTable();
+		Program program = helper.getProgram();
+		SymbolTable symTable = program.getSymbolTable();
+		for (ElfDynamic dynamic : table.getDynamics()) {
+			monitor.checkCanceled();
+			String symbolName = "__"+dynamic.getTagAsString();
+			List<Symbol> symbols = symTable.getGlobalSymbols(symbolName);
+			if (symbols.size() == 1) {
+				Symbol symbol = symbols.get(0);
+				Address symbolAddress = getSceSpecialAddress(symbol);
+				symbol.delete();
+				symTable.createLabel(symbolAddress, symbolName, SourceType.IMPORTED);
+			}
+		}
+	}
+
+	private static Address getSceSpecialAddress(Symbol symbol) {
+		Memory mem = symbol.getProgram().getMemory();
+		AddressSpace space = mem.getBlock(".sce_special").getStart().getAddressSpace();
+		return space.getAddress(symbol.getAddress().getOffset());
 	}
 
 	private void fixDynamicSection(ElfLoadHelper helper) throws Exception {
