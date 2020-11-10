@@ -64,6 +64,7 @@ public class NIDAnalyzer extends AbstractAnalyzer {
 		private final Map<String, String> db;
 		private final MessageLog log;
 		private final ExternalManager man;
+		private final SymbolTable table;
 		private final ImportManager importMan;
 
 		NIDResolver(Program program, MessageLog log) {
@@ -78,6 +79,7 @@ public class NIDAnalyzer extends AbstractAnalyzer {
 			this.db = db;
 			this.log = log;
 			this.man = program.getExternalManager();
+			this.table = program.getSymbolTable();
 			this.importMan = importMan;
 		}
 
@@ -109,10 +111,10 @@ public class NIDAnalyzer extends AbstractAnalyzer {
 			if (db.containsKey(name)) {
 				name = db.get(name);
 			}
+			if (ns == null) {
+				ns = s.getProgram().getGlobalNamespace();
+			}
 			try {
-				if (ns == null) {
-					ns = s.getProgram().getGlobalNamespace();
-				}
 				s.setNameAndNamespace(name, ns, SourceType.IMPORTED);
 				if (name.equals("__stack_chk_fail")) {
 					Function fun = (Function) s.getObject();
@@ -120,6 +122,12 @@ public class NIDAnalyzer extends AbstractAnalyzer {
 				}
 			} catch (InvalidInputException e) {
 				// occurs for data
+				ExternalLocation loc = man.getExternalLocation(s);
+				if (loc == null) {
+					man.addExtLocation(ns, name, null, SourceType.IMPORTED);
+				}
+				s = table.createLabel(s.getAddress(), name, SourceType.IMPORTED);
+				s.setPrimary();
 			} catch (Exception e) {
 				log.appendException(e);
 			}
