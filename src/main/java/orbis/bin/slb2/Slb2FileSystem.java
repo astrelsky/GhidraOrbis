@@ -20,7 +20,7 @@ public class Slb2FileSystem implements GFileSystem {
 	private final ByteProvider provider;
 	private final FileSystemRefManager refManager;
 	private final FileSystemIndexHelper<Slb2Entry> helper;
-	private boolean isClosed;
+	private boolean isClosed = false;
 
 	Slb2FileSystem(File file, FSRLRoot fsrl, ByteProvider provider) {
 		this.file = file;
