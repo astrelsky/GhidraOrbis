@@ -1,4 +1,4 @@
-package orbis.pup;
+package orbis.bin.slb2;
 
 import java.io.*;
 import java.util.Arrays;
@@ -13,19 +13,16 @@ import ghidra.formats.gfilesystem.factory.GFileSystemProbeWithFile;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
-public class PupFileSystemFactory implements GFileSystemFactoryFull<PupFileSystem>,
+public class Slb2FileSystemFactory implements GFileSystemFactoryFull<Slb2FileSystem>,
 		GFileSystemProbeBytesOnly, GFileSystemProbeWithFile {
 
 	@Override
 	public boolean probe(FSRL containerFSRL, File containerFile, FileSystemService fsService,
 			TaskMonitor monitor) throws IOException, CancelledException {
-		String filename = containerFSRL.getName();
-		if (filename.contains(".PUP")) {
-			try (InputStream is = new FileInputStream(containerFile)) {
-				byte[] startBytes = new byte[getBytesRequired()];
-				if (is.read(startBytes) == startBytes.length) {
-					return probeStartBytes(null, startBytes);
-				}
+		try (InputStream is = new FileInputStream(containerFile)) {
+			byte[] startBytes = new byte[getBytesRequired()];
+			if (is.read(startBytes) == startBytes.length) {
+				return probeStartBytes(null, startBytes);
 			}
 		}
 		return false;
@@ -33,21 +30,20 @@ public class PupFileSystemFactory implements GFileSystemFactoryFull<PupFileSyste
 
 	@Override
 	public int getBytesRequired() {
-		return PupHeader.MAGIC.length;
+		return Slb2Header.MAGIC.length();
 	}
 
 	@Override
 	public boolean probeStartBytes(FSRL containerFSRL, byte[] startBytes) {
-		return Arrays.equals(startBytes, PupHeader.MAGIC);
+		return Arrays.equals(startBytes, Slb2Header.MAGIC.getBytes());
 	}
 
 	@Override
-	public PupFileSystem create(FSRL containerFSRL, FSRLRoot targetFSRL,
+	public Slb2FileSystem create(FSRL containerFSRL, FSRLRoot targetFSRL,
 			ByteProvider byteProvider, File containerFile, FileSystemService fsService,
 			TaskMonitor monitor) throws IOException, CancelledException {
-		PupFileSystem fs = new PupFileSystem(containerFile, targetFSRL, byteProvider);
+		Slb2FileSystem fs = new Slb2FileSystem(containerFile, targetFSRL, byteProvider);
 		fs.mount(monitor);
 		return fs;
 	}
-	
 }

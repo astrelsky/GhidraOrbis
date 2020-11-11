@@ -1,4 +1,4 @@
-package orbis.pup;
+package orbis.bin.pup;
 
 import java.io.*;
 import java.util.zip.InflaterInputStream;

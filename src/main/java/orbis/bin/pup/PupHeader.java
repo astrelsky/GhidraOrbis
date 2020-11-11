@@ -1,4 +1,4 @@
-package orbis.pup;
+package orbis.bin.pup;
 
 import java.io.IOException;
 import java.util.Iterator;
@@ -7,7 +7,9 @@ import ghidra.app.util.bin.BinaryReader;
 import ghidra.app.util.bin.ByteProvider;
 import ghidra.util.Msg;
 
-final class PupHeader implements Iterable<PupBlob> {
+import orbis.bin.BinStructure;
+
+final class PupHeader extends BinStructure implements Iterable<PupBlob> {
 
 	static final byte[] MAGIC = new byte[] {
 		(byte) 0x4F, (byte) 0x15, (byte) 0x3D, (byte) 0x1D
@@ -52,7 +54,7 @@ final class PupHeader implements Iterable<PupBlob> {
 	}
 
 	private void skipBytes(int n) {
-		reader.setPointerIndex(reader.getPointerIndex() + n);
+		advanceReader(reader, n);
 	}
 
 	int getBlobCount() {
