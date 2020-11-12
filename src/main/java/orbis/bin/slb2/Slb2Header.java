@@ -6,7 +6,9 @@ import java.util.*;
 import ghidra.app.util.bin.BinaryReader;
 import ghidra.program.model.data.*;
 
-public final class Slb2Header extends Slb2Structure {
+import orbis.bin.FileSystemHeader;
+
+public final class Slb2Header extends Slb2Structure implements FileSystemHeader<Slb2Entry> {
 
 	static final String MAGIC = "SLB2";
 	private static final int MAX_ENTRIES = 10;
@@ -16,7 +18,7 @@ public final class Slb2Header extends Slb2Structure {
 	private final long flags;
 	private final long fileCount;
 	private final long blockCount;
-	private final Slb2Entry[] entries;
+	private final List<Slb2Entry> entries;
 
 	public Slb2Header(BinaryReader reader) throws IOException {
 		if (!reader.readNextAsciiString(4).equals(MAGIC)) {
@@ -31,10 +33,11 @@ public final class Slb2Header extends Slb2Structure {
 		}
 		this.blockCount = reader.readNextUnsignedInt();
 		advanceReader(reader, Integer.BYTES * 3);
-		this.entries = new Slb2Entry[(int) fileCount];
+		Slb2Entry[] entries = new Slb2Entry[(int) fileCount];
 		for (int i = 0; i < fileCount; i++) {
 			entries[i] = new Slb2Entry(reader);
 		}
+		this.entries = List.of(entries);
 	}
 
 	/**
@@ -69,7 +72,7 @@ public final class Slb2Header extends Slb2Structure {
 	 * @return the entries
 	 */
 	public List<Slb2Entry> getEntries() {
-		return List.of(entries);
+		return entries;
 	}
 
 	private static Structure getDataType() {
@@ -84,5 +87,10 @@ public final class Slb2Header extends Slb2Structure {
 		struct.setInternallyAligned(true);
 		struct.setToMachineAlignment();
 		return struct;
+	}
+
+	@Override
+	public Iterator<Slb2Entry> iterator() {
+		return entries.iterator();
 	}
 }

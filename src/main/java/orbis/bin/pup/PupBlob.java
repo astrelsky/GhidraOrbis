@@ -5,7 +5,9 @@ import java.util.zip.InflaterInputStream;
 
 import ghidra.app.util.bin.*;
 
-final class PupBlob {
+import orbis.bin.FileInfoProvider;
+
+final class PupBlob implements FileInfoProvider {
 
 	private static final int COMPRESSED_MASK = 0x8;
 	private static final int BLOCKED_MASK = 0x800;
@@ -38,7 +40,8 @@ final class PupBlob {
 		return fileSize;
 	}
 
-	long getMemorySize() {
+	@Override
+	public long getSize() {
 		return memorySize;
 	}
 
@@ -61,7 +64,8 @@ final class PupBlob {
 		return data;
 	}
 
-	InputStream getInputStream() throws IOException {
+	@Override
+	public InputStream getInputStream() throws IOException {
 		InputStream is = reader.getByteProvider().getInputStream(offset);
 		if (isCompressed()) {
 			is = new InflaterInputStream(is);
@@ -69,7 +73,8 @@ final class PupBlob {
 		return is;
 	}
 
-	String getType() {
+	@Override
+	public String getFileName() {
 		switch ((int) getID()) {
 			case 0x1  :
 				return "emc_ipl.slb";

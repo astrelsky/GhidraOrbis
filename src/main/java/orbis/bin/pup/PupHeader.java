@@ -8,8 +8,9 @@ import ghidra.app.util.bin.ByteProvider;
 import ghidra.util.Msg;
 
 import orbis.bin.BinStructure;
+import orbis.bin.FileSystemHeader;
 
-final class PupHeader extends BinStructure implements Iterable<PupBlob> {
+final class PupHeader extends BinStructure implements FileSystemHeader<PupBlob> {
 
 	static final byte[] MAGIC = new byte[] {
 		(byte) 0x4F, (byte) 0x15, (byte) 0x3D, (byte) 0x1D

@@ -7,7 +7,9 @@ import ghidra.app.util.bin.BinaryReader;
 import ghidra.app.util.bin.ByteProvider;
 import ghidra.program.model.data.*;
 
-public final class Slb2Entry extends Slb2Structure {
+import orbis.bin.FileInfoProvider;
+
+public final class Slb2Entry extends Slb2Structure implements FileInfoProvider {
 
 	private static final int MAX_FILENAME_LENGTH = 32;
 	private static final int BLOCK_SIZE = 512;
@@ -44,20 +46,17 @@ public final class Slb2Entry extends Slb2Structure {
 		return blockIndex;
 	}
 
-	/**
-	 * @return the fileSize
-	 */
-	public long getFileSize() {
+	@Override
+	public long getSize() {
 		return fileSize;
 	}
 
-	/**
-	 * @return the fileName
-	 */
+	@Override
 	public String getFileName() {
 		return fileName;
 	}
 
+	@Override
 	public InputStream getInputStream() throws IOException {
 		return provider.getInputStream(BLOCK_SIZE * blockIndex);
 	}
