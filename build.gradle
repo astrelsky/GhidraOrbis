@@ -48,7 +48,7 @@ dependencies {
 	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Framework', include: "**/*.jar")
 	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Features', include: "**/*.jar")
 	compileOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Processors', include: "**/*.jar")
-	runtimeOnly fileTree(dir: ghidraUserDir + "/Extensions",
+	compileOnly fileTree(dir: ghidraUserDir + "/Extensions",
 						 include: "**/*.jar", exclude: project.name)
 	runtimeOnly "org.apache.commons:commons-lang3:3.9"
 }
