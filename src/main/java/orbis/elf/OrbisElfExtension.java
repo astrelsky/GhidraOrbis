@@ -24,6 +24,9 @@ import ghidra.util.task.TaskMonitor;
 
 import orbis.data.OrbisDataUtils;
 import orbis.db.ImportManager;
+import orbis.elf.blockmaker.KernelReadOnlyBlockMaker;
+import orbis.elf.blockmaker.ProgramReadOnlyBlockMaker;
+import orbis.elf.blockmaker.ReadOnlyBlockMaker;
 import orbis.elf.fragment.DynamicFragmentBuilder;
 import orbis.elf.fragment.FragmentBuilder;
 import orbis.elf.fragment.ProgramHeaderFragmentBuilder;
@@ -179,6 +182,28 @@ public class OrbisElfExtension extends ElfExtension {
 			throw e;
 		} catch (Exception e) {
 			helper.getLog().appendException(e);
+		}
+	}
+
+	@Override
+	public void processGotPlt(ElfLoadHelper helper, TaskMonitor monitor)
+			throws CancelledException {
+		OrbisElfHeader elf = (OrbisElfHeader) helper.getElfHeader();
+		if (elf.getSections().length != 0) {
+			return;
+		}
+		ReadOnlyBlockMaker maker;
+		if (elf.isKernel()) {
+			maker = new KernelReadOnlyBlockMaker(helper, monitor);
+		} else {
+			maker = new ProgramReadOnlyBlockMaker(helper, monitor);
+		}
+		try {
+			maker.makeBlock();
+		} catch (CancelledException e) {
+			throw e;
+		} catch (Exception e) {
+			helper.log(e);
 		}
 	}
 

@@ -26,7 +26,7 @@ public abstract class FragmentBuilder {
 
 	protected abstract String getName();
 
-	public void move() throws Exception {
+	public final void move() throws Exception {
 		Program program = helper.getProgram();
 		Address start = getStart();
 		if (start == null) {

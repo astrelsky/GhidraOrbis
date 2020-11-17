@@ -20,6 +20,9 @@ public class NidDatabaseFactory {
 
     public static Map<String, String> getNidDatabase() throws Exception {
 		ResourceFile file = Application.findDataFileInAnyModule("nid_db.xml");
+		if (file == null) {
+			throw new Exception("nid_db.xml not found! Please check the plugin installation.");
+		}
 		XmlPullParser parser = XmlPullParserFactory.create(file, new DefaultHandler(), true);
 		try {
 			XmlElement header = parser.next();
