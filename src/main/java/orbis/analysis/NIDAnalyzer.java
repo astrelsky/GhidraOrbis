@@ -95,14 +95,12 @@ public class NIDAnalyzer extends AbstractAnalyzer {
 			int i = getIndex(name.charAt(12));
 			if (name.charAt(13) == '#') {
 				if (importMan.containsLibrary(i)) {
-					String lib = importMan.getLibraryName(i);
-					ns = man.getExternalLibrary(lib);
+					ns = getExternalLibrary(i);
 				}
 			} else if (name.charAt(14) == '#') {
 				i += getIndex(name.charAt(13));
 				if (importMan.containsLibrary(i)) {
-					String lib = importMan.getLibraryName(i);
-					ns = man.getExternalLibrary(lib);
+					ns = getExternalLibrary(i);
 				}
 			} else {
 				return;
@@ -133,18 +131,30 @@ public class NIDAnalyzer extends AbstractAnalyzer {
 			}
 		}
 
+		private Library getExternalLibrary(int index) throws Exception {
+			String name = importMan.getLibraryName(index);
+			Library lib = man.getExternalLibrary(name);
+			if (lib == null) {
+				lib = man.addExternalLibraryName(name, SourceType.IMPORTED);
+			}
+			return lib;
+		}
+
 		private static int getIndex(char c) {
-			if (c >= 'A' && c <= 'z') {
+			if (c >= 'A' && c <= 'Z') {
 				return c - 'A';
 			}
+			if (c >= 'a' && c <= 'z') {
+				return c - 0x47;
+			}
 			if (c >= '0' && c <= '9') {
-				return c - '0' + 52;
+				return c - '0' + 0x34;
 			}
 			if (c == '+') {
-				return 62;
+				return 0x3e;
 			}
 			if (c == '-') {
-				return 63;
+				return 0x3f;
 			}
 			return -1;
 		}

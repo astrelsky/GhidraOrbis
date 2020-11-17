@@ -321,7 +321,7 @@ public class OrbisElfExtension extends ElfExtension {
 		if (block != null) {
 			try {
 				Address address = block.getStart();
-				ArrayDataType dt = new ArrayDataType(Undefined1DataType.dataType, 0x14, 1);
+				ArrayDataType dt = new ArrayDataType(ByteDataType.dataType, 0x14, 1);
 				helper.createData(address, dt);
 				helper.createSymbol(address, "SCE_FINGERPRINT", true, false, null);
 			} catch (InvalidInputException e) {
