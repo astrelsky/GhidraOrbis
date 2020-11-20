@@ -5,7 +5,7 @@ Credit for said works are listed at the end.
 
 ## Requirements
 
-* Ghidra 9.2_DEV - Due to issues with extension points in Ghidra 9.1.2 only Ghidra 9.2_DEV is supported
+* Ghidra 9.2
 
 ## Credits
 
