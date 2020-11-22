@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<entries>
+	<entry name="header.bin" offset="0x0" size="0x1000"/>
+	<entry name="unknown.bin" offset="0x1000" size="0x1000"/>
+	<entry name="mbr1.bin" offset="0x2000" size="0x1000"/>
+	<entry name="mbr2.bin" offset="0x3000" size="0x1000"/>
+	<entry name="emc_iplb.bin" offset="0x4000" size="0x60000"/>
+	<entry name="emc_ipl.bin" offset="0x64000" size="0x60000"/>
+	<entry name="eap_kbl.bin" offset="0xC4000" size="0x80000"/>
+	<entry name="wifi_fw.bin" offset="0x144000" size="0x80000"/>
+	<entry name="nvs.bin" offset="0x1C4000" size="0xC000"/>
+	<entry name="blank.bin" offset="0x1D0000" size="0x30000"/>
+	<entry name="header2.bin" offset="0x200000" size="0x1000"/>
+	<entry name="unknown2.bin" offset="0x201000" size="0x1000"/>
+	<entry name="mbr3.bin" offset="0x202000" size="0x1000"/>
+	<entry name="mbr4.bin" offset="0x203000" size="0x1000"/> 
+	<entry name="sam_iplb.bin" offset="0x204000" size="0x3E000"/>
+	<entry name="sam_ipl.bin" offset="0x242000" size="0x3E000"/>
+	<entry name="idata.bin" offset="0x280000" size="0x80000"/>
+	<entry name="bd_hrl.bin" offset="0x300000" size="0x80000"/>
+	<entry name="vtrm.bin" offset="0x380000" size="0x40000"/>
+	<entry name="secureb.bin" offset="0x3C0000" size="0xCC0000"/>
+	<entry name="secure.bin" offset="0x1080000" size="0xCC0000"/>
+	<entry name="blank2.bin" offset="0x1D40000" size="0x2C0000"/>
+</entries>

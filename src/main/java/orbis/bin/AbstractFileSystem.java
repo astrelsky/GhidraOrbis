@@ -10,8 +10,10 @@ import ghidra.formats.gfilesystem.*;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
+import org.apache.commons.io.input.BoundedInputStream;
+
 /**
- * A convienent GFileSystem base that does all the work 
+ * A convienent GFileSystem base that does all the work
  */
 public abstract class AbstractFileSystem<T extends FileInfoProvider> implements GFileSystem {
 
@@ -80,7 +82,7 @@ public abstract class AbstractFileSystem<T extends FileInfoProvider> implements 
 		if (entry == null) {
 			throw new IOException("Unknown file " + file);
 		}
-		return entry.getInputStream();
+		return new BoundedInputStream(entry.getInputStream(), entry.getSize());
 	}
 
 	@Override

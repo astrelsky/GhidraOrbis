@@ -9,27 +9,11 @@ import ghidra.formats.gfilesystem.FSRLRoot;
 import ghidra.formats.gfilesystem.FileSystemService;
 import ghidra.formats.gfilesystem.factory.GFileSystemFactoryFull;
 import ghidra.formats.gfilesystem.factory.GFileSystemProbeBytesOnly;
-import ghidra.formats.gfilesystem.factory.GFileSystemProbeWithFile;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
 public class PupFileSystemFactory implements GFileSystemFactoryFull<PupFileSystem>,
-		GFileSystemProbeBytesOnly, GFileSystemProbeWithFile {
-
-	@Override
-	public boolean probe(FSRL containerFSRL, File containerFile, FileSystemService fsService,
-			TaskMonitor monitor) throws IOException, CancelledException {
-		String filename = containerFSRL.getName();
-		if (filename.contains(".PUP")) {
-			try (InputStream is = new FileInputStream(containerFile)) {
-				byte[] startBytes = new byte[getBytesRequired()];
-				if (is.read(startBytes) == startBytes.length) {
-					return probeStartBytes(null, startBytes);
-				}
-			}
-		}
-		return false;
-	}
+		GFileSystemProbeBytesOnly {
 
 	@Override
 	public int getBytesRequired() {
@@ -38,7 +22,8 @@ public class PupFileSystemFactory implements GFileSystemFactoryFull<PupFileSyste
 
 	@Override
 	public boolean probeStartBytes(FSRL containerFSRL, byte[] startBytes) {
-		return Arrays.equals(startBytes, PupHeader.MAGIC);
+		byte[] data = Arrays.copyOf(startBytes, getBytesRequired());
+		return Arrays.equals(data, PupHeader.MAGIC);
 	}
 
 	@Override
@@ -49,5 +34,5 @@ public class PupFileSystemFactory implements GFileSystemFactoryFull<PupFileSyste
 		fs.mount(monitor);
 		return fs;
 	}
-	
+
 }

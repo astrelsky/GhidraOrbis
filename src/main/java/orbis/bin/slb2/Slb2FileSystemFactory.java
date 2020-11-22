@@ -9,24 +9,11 @@ import ghidra.formats.gfilesystem.FSRLRoot;
 import ghidra.formats.gfilesystem.FileSystemService;
 import ghidra.formats.gfilesystem.factory.GFileSystemFactoryFull;
 import ghidra.formats.gfilesystem.factory.GFileSystemProbeBytesOnly;
-import ghidra.formats.gfilesystem.factory.GFileSystemProbeWithFile;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
 public class Slb2FileSystemFactory implements GFileSystemFactoryFull<Slb2FileSystem>,
-		GFileSystemProbeBytesOnly, GFileSystemProbeWithFile {
-
-	@Override
-	public boolean probe(FSRL containerFSRL, File containerFile, FileSystemService fsService,
-			TaskMonitor monitor) throws IOException, CancelledException {
-		try (InputStream is = new FileInputStream(containerFile)) {
-			byte[] startBytes = new byte[getBytesRequired()];
-			if (is.read(startBytes) == startBytes.length) {
-				return probeStartBytes(null, startBytes);
-			}
-		}
-		return false;
-	}
+		GFileSystemProbeBytesOnly {
 
 	@Override
 	public int getBytesRequired() {
@@ -35,7 +22,8 @@ public class Slb2FileSystemFactory implements GFileSystemFactoryFull<Slb2FileSys
 
 	@Override
 	public boolean probeStartBytes(FSRL containerFSRL, byte[] startBytes) {
-		return Arrays.equals(startBytes, Slb2Header.MAGIC.getBytes());
+		byte[] data = Arrays.copyOf(startBytes, getBytesRequired());
+		return Arrays.equals(data, Slb2Header.MAGIC.getBytes());
 	}
 
 	@Override
