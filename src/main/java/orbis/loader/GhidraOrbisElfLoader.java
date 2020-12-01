@@ -9,8 +9,10 @@ import ghidra.app.util.bin.format.elf.*;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.app.util.importer.MessageLogContinuesFactory;
 import ghidra.app.util.opinion.*;
+import ghidra.framework.model.DomainObject;
 import ghidra.program.model.lang.LanguageCompilerSpecPair;
 import ghidra.program.model.listing.Program;
+import ghidra.util.NumericUtilities;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.task.TaskMonitor;
@@ -101,5 +103,21 @@ public class GhidraOrbisElfLoader extends ElfLoader {
 		OrbisElfHeader elfHeader =
 			OrbisElfHeader.createElfHeader(RethrowContinuesFactory.INSTANCE, provider);
 		return elfHeader;
+	}
+
+	@Override
+	public List<Option> getDefaultOptions(ByteProvider provider, LoadSpec loadSpec,
+			DomainObject domainObject, boolean loadIntoProgram) {
+		List<Option> options =
+			super.getDefaultOptions(provider, loadSpec, domainObject, loadIntoProgram);
+		Option baseOption = options.stream()
+			.filter(o -> o.getName().equals("Image Base"))
+			.findFirst()
+			.orElseThrow();
+		long base = NumericUtilities.parseLong((String) baseOption.getValue());
+		if (base == 0) {
+			baseOption.setValue("1000000");
+		}
+		return options;
 	}
 }
