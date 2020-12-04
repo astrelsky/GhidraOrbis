@@ -1,13 +1,11 @@
 package orbis.self;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 import ghidra.app.util.bin.BinaryReader;
 
-public final class SelfExtendedHeader implements Iterable<SelfEntry> {
+public final class SelfExtendedHeader implements Iterable<SelfSegment> {
 
 	private final BinaryReader reader;
 	private final long keyType;
@@ -16,7 +14,7 @@ public final class SelfExtendedHeader implements Iterable<SelfEntry> {
 	private final long fileSize;
 	private final int entryCount;
 	private final int flag;
-	private final List<SelfEntry> entries;
+	private final List<SelfSegment> entries;
 
 	SelfExtendedHeader(BinaryReader reader) throws IOException, EncryptedSelfException {
 		this.reader = reader;
@@ -30,8 +28,9 @@ public final class SelfExtendedHeader implements Iterable<SelfEntry> {
 		skipBytes(4);
 		this.entries = new ArrayList<>(entryCount);
 		for (int i = 0; i < entryCount; i++) {
-			entries.add(new SelfEntry(reader));
+			entries.add(new SelfSegment(reader));
 		}
+		entries.sort(null);
 	}
 
 	private void skipBytes(int n) {
@@ -87,12 +86,16 @@ public final class SelfExtendedHeader implements Iterable<SelfEntry> {
 		return flag;
 	}
 
-	SelfEntry getEntry() {
+	SelfSegment getEntry() {
 		return entries.get(0);
 	}
 
 	@Override
-	public Iterator<SelfEntry> iterator() {
+	public Iterator<SelfSegment> iterator() {
 		return entries.iterator();
+	}
+
+	public List<SelfSegment> getEntries() {
+		return Collections.unmodifiableList(entries);
 	}
 }

@@ -1,20 +1,18 @@
 package orbis.self;
 
-import java.io.IOException;
+import java.io.*;
 import java.util.Arrays;
 
-import ghidra.app.util.bin.BinaryReader;
-import ghidra.app.util.bin.ByteProvider;
-import ghidra.app.util.bin.ByteProviderWrapper;
-import ghidra.app.util.bin.format.FactoryBundledWithBinaryReader;
+import ghidra.app.util.bin.*;
 import ghidra.app.util.bin.format.elf.ElfException;
-import ghidra.app.util.bin.format.elf.ElfHeader;
 import ghidra.app.util.bin.format.elf.ElfProgramHeader;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.app.util.importer.MessageLogContinuesFactory;
+import ghidra.util.exception.AssertException;
 
 import generic.continues.GenericFactory;
 import generic.continues.RethrowContinuesFactory;
+import orbis.elf.OrbisElfHeader;
 
 public final class SelfHeader {
 
@@ -85,44 +83,110 @@ public final class SelfHeader {
 	}
 
 	public ByteProvider getElfHeaderByteProvider() throws IOException {
-		return extendedHeader.getEntry().getElfHeaderByteProvider();
+		BinaryReader reader = extendedHeader.getReader();
+		return new ByteProviderWrapper(
+			reader.getByteProvider(), elfHeaderOffset,
+			extendedHeader.getFileSize() - elfHeaderOffset);
 	}
 
-	public ElfHeader buildElfHeader() throws IOException, ElfException {
+	public OrbisElfHeader buildElfHeader() throws IOException, ElfException {
 		return buildElfHeader(RethrowContinuesFactory.INSTANCE);
 	}
 
-	public ElfHeader buildElfHeader(MessageLog log) throws IOException, ElfException {
+	public OrbisElfHeader buildElfHeader(MessageLog log) throws IOException, ElfException {
 		GenericFactory factory = MessageLogContinuesFactory.create(log);
 		return buildElfHeader(factory);
 	}
 
-	private ElfHeader buildElfHeader(GenericFactory factory) throws IOException, ElfException {
-		BinaryReader reader = extendedHeader.getReader();
-		ByteProvider provider = new ByteProviderWrapper(
-			reader.getByteProvider(), elfHeaderOffset, extendedHeader.getFileSize());
-		ElfHeader header = ElfHeader.createElfHeader(factory, provider);
-		for (SelfEntry entry : extendedHeader) {
-			FactoryBundledWithBinaryReader bundle = new FactoryBundledWithBinaryReader(
-				factory, entry.getElfHeaderByteProvider(), true);
-			ElfProgramHeader progHeader = SelfProgramHeader.createElfProgramHeader(bundle, header);
-			header.addProgramHeader(progHeader);
-		}
-		return header;
+	private OrbisElfHeader buildElfHeader(GenericFactory factory)
+			throws IOException, ElfException {
+		ByteProvider provider = getElfHeaderByteProvider();
+		return OrbisElfHeader.createElfHeader(factory, provider);
 	}
 
-	private static class SelfProgramHeader extends ElfProgramHeader {
+	public ByteProvider getElfByteProvider() throws IOException {
+		OrbisElfHeader elf = null;
+		try {
+			elf = buildElfHeader();
+		} catch (ElfException e) {
+			throw new AssertException(e);
+		}
+		BinaryReader elfReader = new BinaryReader(getElfHeaderByteProvider(), true);
+		String name = getByteProvider().getName();
+		File file = File.createTempFile(name, null);
+		file.deleteOnExit();
+		try (DataWriter writer = new DataWriter(file)) {
 
-		@SuppressWarnings("unused")
-		public SelfProgramHeader() {
+			// write the ehdr and phdr table
+			writer.write(elfReader.readNextByteArray(elf.e_ehsize()));
+			int size = elf.e_phnum() * elf.e_phentsize();
+			writer.seek(elf.e_phoff());
+			writer.write(elfReader.readNextByteArray(size));
+
+			// clear the section header table
+			writer.seek(0x3c);
+			writer.write(new byte[]{0, 0});
+
+			// write the program headers
+			for (ElfProgramHeader phdr : elf.getRawProgramHeaders()) {
+				for (SelfSegment entry : extendedHeader) {
+					if (phdr.getFileSize() == entry.getFileSize()) {
+						writer.seek(phdr.getOffset());
+						writer.write(entry.getInputStream());
+					}
+				}
+			}
+		}
+		return new TempRandomAccessByteProvider(file);
+	}
+
+	private BinaryReader getReader() {
+		return extendedHeader.getReader();
+	}
+
+	private ByteProvider getByteProvider() {
+		return getReader().getByteProvider();
+	}
+
+	private static class DataWriter implements AutoCloseable {
+
+		private final RandomAccessFile f;
+
+		DataWriter(File f) throws FileNotFoundException {
+			this.f = new RandomAccessFile(f, "rw");
 		}
 
-		static ElfProgramHeader createElfProgramHeader(FactoryBundledWithBinaryReader reader,
-				ElfHeader header) throws IOException {
-			SelfProgramHeader elfProgramHeader =
-				(SelfProgramHeader) reader.getFactory().create(SelfProgramHeader.class);
-			elfProgramHeader.initElfProgramHeader(reader, header);
-			return elfProgramHeader;
+		void seek(long pos) throws IOException {
+			f.seek(pos);
+		}
+
+		private void write(InputStream is) throws IOException {
+			is.transferTo(new FileOutputStream(f.getFD()));
+		}
+
+		private void write(byte[] data) throws IOException {
+			f.write(data);
+		}
+
+		@Override
+		public void close() throws IOException {
+			f.close();
+		}
+
+	}
+
+	private static class TempRandomAccessByteProvider extends RandomAccessByteProvider {
+
+		TempRandomAccessByteProvider(File f) throws IOException {
+			super(f);
+		}
+
+		@Override
+		public void close() throws IOException {
+			super.close();
+			File f = getFile();
+			f.delete();
 		}
 	}
+
 }

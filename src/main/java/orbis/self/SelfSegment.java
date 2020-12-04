@@ -6,7 +6,7 @@ import java.util.zip.InflaterInputStream;
 
 import ghidra.app.util.bin.*;
 
-public final class SelfEntry {
+public final class SelfSegment implements Comparable<SelfSegment> {
 
 	private static final Property ORDER = new Property(0, 0x1);
     private static final Property ENCRYPTED = new Property(1, 0x1);
@@ -25,8 +25,8 @@ public final class SelfEntry {
 	private final long fileOffset;
 	private final long fileSize;
 	private final long memorySize;
-	
-	SelfEntry(BinaryReader reader) throws IOException, EncryptedSelfException {
+
+	SelfSegment(BinaryReader reader) throws IOException, EncryptedSelfException {
 		this.reader = reader;
 		long[] values = reader.readNextLongArray(4);
 		this.properties = values[0];
@@ -36,6 +36,15 @@ public final class SelfEntry {
 		if (isEncrypted()) {
 			throw new EncryptedSelfException();
 		}
+	}
+
+	@Override
+	public int compareTo(SelfSegment o) {
+		int i = Integer.compare(getSegmentIndex(), o.getSegmentIndex());
+		if (i == 0) {
+			return Long.compare(fileOffset, o.fileOffset);
+		}
+		return i;
 	}
 
 	public boolean hasOrder() {
@@ -102,7 +111,7 @@ public final class SelfEntry {
 		return (int) ((properties >> property.shift) & property.mask);
 	}
 
-	private InputStream getInputStream() throws IOException {
+	InputStream getInputStream() throws IOException {
 		InputStream is = reader.getByteProvider().getInputStream(fileOffset);
 		if (isCompressed()) {
 			is = new InflaterInputStream(is);

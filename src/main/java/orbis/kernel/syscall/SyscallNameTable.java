@@ -13,6 +13,8 @@ import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddr
 
 public final class SyscallNameTable {
 
+	private static final String NAME_PREFIX = "sys_";
+
 	private final Program program;
 	private final Address start;
 	private Data data;
@@ -51,7 +53,8 @@ public final class SyscallNameTable {
 		Listing listing = program.getListing();
 		Address addr = (Address) data.getComponent(index).getValue();
 		Data str = listing.getDataAt(addr);
-		return (String) str.getValue();
+		String name = (String) str.getValue();
+		return name.startsWith(NAME_PREFIX) ? name : NAME_PREFIX + name;
 	}
 
 	public int getLength() {

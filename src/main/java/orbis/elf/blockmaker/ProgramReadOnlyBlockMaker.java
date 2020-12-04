@@ -1,12 +1,20 @@
 package orbis.elf.blockmaker;
 
+import java.util.LinkedList;
+import java.util.List;
+
+import ghidra.app.plugin.core.analysis.ReferenceAddressPair;
 import ghidra.app.util.bin.format.elf.ElfLoadHelper;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOutOfBoundsException;
+import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
+import ghidra.program.model.symbol.Symbol;
+import ghidra.program.model.symbol.SymbolTable;
+import ghidra.program.util.ProgramMemoryUtil;
 import ghidra.util.task.TaskMonitor;
 
 public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
@@ -31,6 +39,25 @@ public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
 	public void makeBlock() throws Exception {
 		ProgramFragment frag = getPltGotFragment();
 		Address addr = frag.getMinAddress();
+		if (addr == null) {
+			monitor.setMessage("Locating .got.plt");
+			Program program = getProgram();
+			AddressSet addrs = new AddressSet();
+			SymbolTable st = program.getSymbolTable();
+			for (Symbol s : st.getExternalSymbols()) {
+				monitor.checkCanceled();
+				if (s.getReferenceCount() == 1) {
+					addrs.add(s.getReferences()[0].getFromAddress());
+				}
+			}
+			List<ReferenceAddressPair> refs = new LinkedList<>();
+			ProgramMemoryUtil.loadDirectReferenceList(
+				program, 8, addrs.getMinAddress(), addrs, refs, monitor);
+			addrs.clear();
+			refs.forEach(r -> addrs.add(r.getSource()));
+			frag.move(addrs.getMinAddress(), addrs.getMaxAddress());
+			addr = frag.getMinAddress();
+		}
 		monitor.setMessage("Scanning .got.plt");
 		while (frag.contains(addr)) {
 			monitor.checkCanceled();
@@ -124,5 +151,5 @@ public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
 			return address;
 		}
 	}
-	
+
 }

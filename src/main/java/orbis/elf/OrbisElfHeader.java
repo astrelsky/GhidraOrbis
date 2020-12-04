@@ -99,6 +99,29 @@ public class OrbisElfHeader extends ElfHeader {
 		return offset + phdr.getOffset();
 	}
 
+	public ElfProgramHeader[] getRawProgramHeaders() throws IOException {
+		FactoryBundledWithBinaryReader reader = getReader();
+		ElfProgramHeader[] programHeaders = new ElfProgramHeader[e_phnum()];
+		for (int i = 0; i < e_phnum(); ++i) {
+			long index = e_phoff() + (i * e_phentsize());
+			reader.setPointerIndex(index);
+			programHeaders[i] = DefaultElfProgramHeader.createElfProgramHeader(reader, this);
+		}
+		return programHeaders;
+	}
+
+	@Override
+	public ElfProgramHeader[] getProgramHeaders() {
+		if (super.getProgramHeaders() == null) {
+			try {
+				parseProgramHeaders();
+			} catch (Exception e) {
+				// already logged
+			}
+		}
+		return super.getProgramHeaders();
+	}
+
 	private void parseProgramHeaders() throws IOException {
 		FactoryBundledWithBinaryReader reader = getReader();
 		long fileLength = reader.length();
