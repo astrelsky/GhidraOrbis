@@ -86,24 +86,23 @@ public class NIDAnalyzer extends AbstractAnalyzer {
 		void resolve(Symbol s) throws Exception {
 			Namespace ns = s.getParentNamespace();
 			String name = s.getName();
-			if (name.length() < 11 || name.length() > 15) {
-				return;
-			}
-			if (name.charAt(11) != '#') {
+			if (name.length() < 11 || name.charAt(11) != '#') {
 				return;
 			}
 			int i = getIndex(name.charAt(12));
-			if (name.charAt(13) == '#') {
-				if (importMan.containsLibrary(i)) {
-					ns = getExternalLibrary(i);
+			if (name.length() <= 15) {
+				if (name.charAt(13) == '#') {
+					if (importMan.containsLibrary(i)) {
+						ns = getExternalLibrary(i);
+					}
+				} else if (name.charAt(14) == '#') {
+					i += getIndex(name.charAt(13));
+					if (importMan.containsLibrary(i)) {
+						ns = getExternalLibrary(i);
+					}
+				} else {
+					return;
 				}
-			} else if (name.charAt(14) == '#') {
-				i += getIndex(name.charAt(13));
-				if (importMan.containsLibrary(i)) {
-					ns = getExternalLibrary(i);
-				}
-			} else {
-				return;
 			}
 			name = name.substring(0, 11);
 			if (db.containsKey(name)) {
