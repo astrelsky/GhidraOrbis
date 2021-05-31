@@ -120,7 +120,8 @@ public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
 		}
 
 		boolean isJump() throws Exception {
-			return mem.getShort(address) == 0x25ff;
+			// TODO why is address null
+			return address != null && mem.getShort(address) == 0x25ff;
 		}
 
 		void setAddress(Address address) {
