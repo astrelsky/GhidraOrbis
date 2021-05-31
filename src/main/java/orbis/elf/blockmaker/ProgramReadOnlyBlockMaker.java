@@ -1,20 +1,16 @@
 package orbis.elf.blockmaker;
 
-import java.util.LinkedList;
 import java.util.List;
 
-import ghidra.app.plugin.core.analysis.ReferenceAddressPair;
 import ghidra.app.util.bin.format.elf.ElfLoadHelper;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOutOfBoundsException;
-import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
-import ghidra.program.util.ProgramMemoryUtil;
 import ghidra.util.task.TaskMonitor;
 
 public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
@@ -39,33 +35,36 @@ public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
 	public void makeBlock() throws Exception {
 		ProgramFragment frag = getPltGotFragment();
 		Address addr = frag.getMinAddress();
-		if (addr == null) {
-			monitor.setMessage("Locating .got.plt");
-			Program program = getProgram();
-			AddressSet addrs = new AddressSet();
-			SymbolTable st = program.getSymbolTable();
-			for (Symbol s : st.getExternalSymbols()) {
+		if (addr != null) {
+			monitor.setMessage("Scanning .got.plt");
+			while (frag.contains(addr)) {
 				monitor.checkCanceled();
-				if (s.getReferenceCount() == 1) {
-					addrs.add(s.getReferences()[0].getFromAddress());
-				}
+				helper.createData(addr, PointerDataType.dataType);
+				addr = addr.add(Long.BYTES);
 			}
-			List<ReferenceAddressPair> refs = new LinkedList<>();
-			ProgramMemoryUtil.loadDirectReferenceList(
-				program, 8, addrs.getMinAddress(), addrs, refs, monitor);
-			addrs.clear();
-			refs.forEach(r -> addrs.add(r.getSource()));
-			frag.move(addrs.getMinAddress(), addrs.getMaxAddress());
-			addr = frag.getMinAddress();
 		}
+		addr = createTrampolines();
+		if (addr != null) {
+			createReadOnlyBlock(addr);
+		}
+	}
+
+	void createPltGotFragment(Address start) throws Exception {
+		ProgramFragment frag = getPltGotFragment();
+		Program program = getProgram();
+		Memory mem = program.getMemory();
+		Address addr = start;
 		monitor.setMessage("Scanning .got.plt");
-		while (frag.contains(addr)) {
+		MemoryBlock block = mem.getBlock(addr);
+		while (block.contains(addr) && mem.getLong(addr) != 0) {
 			monitor.checkCanceled();
 			helper.createData(addr, PointerDataType.dataType);
 			addr = addr.add(Long.BYTES);
 		}
-		addr = createTrampolines();
-		createReadOnlyBlock(addr);
+		if (!block.contains(addr)) {
+			addr = block.getEnd();
+		}
+		frag.move(start, addr);
 	}
 
 	private Address createTrampolines() throws Exception {
@@ -74,9 +73,20 @@ public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
 		monitor.setMessage("Finding trampolines");
 		JumpSearcher searcher = new JumpSearcher(program, monitor);
 		ProgramFragment frag = getPltGotFragment();
+		if (frag.getMinAddress() == null) {
+			SymbolTable st = program.getSymbolTable();
+			List<Symbol> syms = st.getGlobalSymbols("_DT_FINI");
+			if (syms.size() != 1) {
+				return null;
+			}
+			searcher.setAddress(syms.get(0).getAddress());
+		}
 		while (searcher.getNextAddress() != null) {
 			monitor.checkCanceled();
 			Address addr = searcher.getTarget();
+			if (frag.getMinAddress() == null) {
+				createPltGotFragment(addr);
+			}
 			if (frag.contains(addr)) {
 				break;
 			}
@@ -120,7 +130,6 @@ public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
 		}
 
 		boolean isJump() throws Exception {
-			// TODO why is address null
 			return address != null && mem.getShort(address) == 0x25ff;
 		}
 
