@@ -26,7 +26,7 @@ public final class ImportManager {
 	}
 
 	public void addLibrary(String name, long id) throws IOException {
-		db.Record record = table.getRecord(id);
+		DBRecord record = table.getRecord(id);
 		if (record != null) {
 			return;
 		}
@@ -40,7 +40,7 @@ public final class ImportManager {
 	}
 
 	public String getLibraryName(long id) throws IOException {
-		db.Record record = table.getRecord(id);
+		DBRecord record = table.getRecord(id);
 		if (record == null) {
 			return null;
 		}

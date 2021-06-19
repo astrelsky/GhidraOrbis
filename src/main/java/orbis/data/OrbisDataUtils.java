@@ -21,8 +21,7 @@ public final class OrbisDataUtils {
 		array = new ArrayDataType(QWordDataType.dataType, 4, QWordDataType.dataType.getLength());
 		struct.add(array, "p_unknown", null);
 		struct.setFlexibleArrayComponent(PointerDataType.dataType, "entries", null);
-		struct.setInternallyAligned(true);
-		struct.setToMachineAlignment();
+		struct.setToMachineAligned();
 		return struct;
 	}
 
@@ -32,8 +31,7 @@ public final class OrbisDataUtils {
 		struct.add(QWordDataType.dataType, "p_size", null);
 		struct.add(QWordDataType.dataType, "p_magic", null);
 		struct.add(DWordDataType.dataType, "p_sdk_ver", null);
-		struct.setInternallyAligned(true);
-		struct.setToMachineAlignment();
+		struct.setToMachineAligned();
 		return struct;
 	}
 }

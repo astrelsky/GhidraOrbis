@@ -19,7 +19,7 @@ public final class Slb2Entry extends Slb2Structure implements FileInfoProvider {
 	private final long blockIndex;
 	private final long fileSize;
 	private final String fileName;
-	
+
 	public Slb2Entry(BinaryReader reader) throws IOException {
 		this.provider = reader.getByteProvider();
 		this.blockIndex = reader.readNextUnsignedInt();
@@ -34,8 +34,7 @@ public final class Slb2Entry extends Slb2Structure implements FileInfoProvider {
 		struct.add(DWordDataType.dataType, "block_offset", null);
 		struct.add(DWordDataType.dataType, "file_size", null);
 		struct.add(string, "file_name", null);
-		struct.setInternallyAligned(true);
-		struct.setToMachineAlignment();
+		struct.setToMachineAligned();
 		return struct;
 	}
 

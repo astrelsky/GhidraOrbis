@@ -43,8 +43,7 @@ public final class MasterBlock extends SflashStructure {
 		DataType dt = Partition.dataType;
 		DataType partitions = new ArrayDataType(dt, MAX_PARTITIONS, dt.getLength());
 		struct.add(partitions, "partitions", null);
-		struct.setInternallyAligned(true);
-		struct.setToMachineAlignment();
+		struct.setToMachineAligned();
 		return struct;
 	}
 

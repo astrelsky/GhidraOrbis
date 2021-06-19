@@ -28,8 +28,7 @@ public final class Partition extends SflashStructure {
 		struct.add(ByteDataType.dataType, "flag1", null);
 		struct.add(ByteDataType.dataType, "flag2", null);
 		struct.add(WordDataType.dataType, "unknown", null);
-		struct.setInternallyAligned(true);
-		struct.setToMachineAlignment();
+		struct.setToMachineAligned();
 		return struct;
 	}
 

@@ -84,8 +84,7 @@ public final class Slb2Header extends Slb2Structure implements FileSystemHeader<
 		struct.add(DWordDataType.dataType, "file_count", null);
 		struct.add(DWordDataType.dataType, "block_count", null);
 		struct.setFlexibleArrayComponent(Slb2Entry.dataType, "entry_list", null);
-		struct.setInternallyAligned(true);
-		struct.setToMachineAlignment();
+		struct.setToMachineAligned();
 		return struct;
 	}
 

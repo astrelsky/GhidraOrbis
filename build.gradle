@@ -33,51 +33,52 @@ else {
 	throw new GradleException("GHIDRA_INSTALL_DIR is not defined!")
 }
 //----------------------END "DO NOT MODIFY" SECTION-------------------------------
-
 def ghidraUserDir = System.getProperty("user.home") + "/.ghidra/.${DISTRO_PREFIX}_${RELEASE_NAME}"
 
 repositories { mavenCentral() }
 
 dependencies {
+	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/patch', include: "**/*.jar")
 	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Configurations', include: "**/*.jar")
-	compileOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Extensions',
-					 include: "**/*.jar", exclude: project.name + '**')
-	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Framework', include: "**/*.jar")
 	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Features', include: "**/*.jar")
-	compileOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Processors', include: "**/*.jar")
-	compileOnly fileTree(dir: ghidraUserDir + "/Extensions",
+	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Framework', include: "**/*.jar")
+	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Processors', include: "**/*.jar")
+	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Debug', include: "**/*.jar")
+	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Extensions',
 						 include: "**/*.jar", exclude: project.name)
-	runtimeOnly "org.apache.commons:commons-lang3:3.9"
-	runtimeOnly fileTree(dir: 'data')
+	runtimeOnly fileTree(dir: ghidraUserDir + "/Extensions",
+						 include: "**/*.jar", exclude: project.name)
+	runtimeOnly	fileTree(dir: projectDir.getCanonicalPath() + '/data')
 }
 
 eclipse {
     classpath {
         downloadJavadoc = true
         downloadSources = true
-    }
-}
-
-eclipse.classpath.file.whenMerged {
-	File javaDoc = new File(ghidraInstallDir+"/docs/GhidraAPI_javadoc.zip");
-	for (entry in entries) {
-		if (entry.path.contains('jar')) {
-			File folder = new File(entry.getPath()).getParentFile();
-			for (File file : folder.listFiles()) {
-				if (file.getName().endsWith(".zip")) {
-					if (file.getName().contains("-src")) {
-						entry.setSourcePath(it.fileReference(file));
+		file {
+			whenMerged {
+				File javaDoc = new File(ghidraInstallDir+"/docs/GhidraAPI_javadoc.zip");
+				for (entry in entries) {
+					if (entry.path.contains('jar')) {
+						File folder = new File(entry.getPath()).getParentFile();
+						for (File file : folder.listFiles()) {
+							if (file.getName().endsWith(".zip")) {
+								if (file.getName().contains("-src")) {
+									entry.setSourcePath(it.fileReference(file));
+								}
+								entry.setJavadocPath(it.fileReference(javaDoc));
+							}
+						}
 					}
-					entry.setJavadocPath(it.fileReference(javaDoc));
 				}
+				entries.add(
+					new org.gradle.plugins.ide.eclipse.model.Library(
+						it.fileReference(new File(projectDir, '/bin'))
+					)
+				)
 			}
 		}
-	}
-	entries.add(
-		new org.gradle.plugins.ide.eclipse.model.Library(
-			it.fileReference(new File(projectDir, '/bin'))
-		)
-	)
+    }
 }
 
 buildExtension {
