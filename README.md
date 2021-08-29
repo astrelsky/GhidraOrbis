@@ -5,7 +5,8 @@ Credit for said works are listed at the end.
 
 ## Requirements
 
-* Ghidra 9.2
+* Ghidra 10.0+
+* [Ghidra-Cpp-Class-Analyzer](https://github.com/astrelsky/Ghidra-Cpp-Class-Analyzer) is required for building to provide optional features. It is **not** a requirement to use the plugin.
 
 ## Credits
 
