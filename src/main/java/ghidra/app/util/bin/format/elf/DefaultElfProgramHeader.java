@@ -6,7 +6,8 @@ import ghidra.app.util.bin.format.FactoryBundledWithBinaryReader;
 
 public class DefaultElfProgramHeader extends ElfProgramHeader {
 
-	protected DefaultElfProgramHeader() {
+	public DefaultElfProgramHeader() {
+		super();
 	}
 
 	public static ElfProgramHeader createElfProgramHeader(FactoryBundledWithBinaryReader reader,

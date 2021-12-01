@@ -8,7 +8,8 @@ import ghidra.util.exception.AssertException;
 
 public class DefaultElfSymbolTable extends ElfSymbolTable {
 
-	protected DefaultElfSymbolTable() {
+	public DefaultElfSymbolTable() {
+		super();
 	}
 
 	public static ElfSymbolTable createElfSymbolTable(FactoryBundledWithBinaryReader reader,

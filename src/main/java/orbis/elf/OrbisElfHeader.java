@@ -34,7 +34,8 @@ public class OrbisElfHeader extends ElfHeader {
     public static final short ET_SCE_DYNAMIC = (short) 0xFE18;
 	public static final short ET_SCE_KERNEL = 2;
 
-	protected OrbisElfHeader() {
+	public OrbisElfHeader() {
+		super();
 	}
 
 	public static OrbisElfHeader createElfHeader(GenericFactory factory, ByteProvider provider)
