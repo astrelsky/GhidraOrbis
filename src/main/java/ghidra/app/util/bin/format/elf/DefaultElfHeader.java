@@ -15,7 +15,8 @@ import utility.function.ExceptionalCallback;
 
 public class DefaultElfHeader extends ElfHeader {
 
-	protected DefaultElfHeader() {
+	public DefaultElfHeader() {
+		super();
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////
