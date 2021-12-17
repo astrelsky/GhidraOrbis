@@ -2,6 +2,8 @@ package orbis.loader;
 
 import java.io.IOException;
 import java.util.*;
+import java.math.BigInteger;
+
 
 import ghidra.app.util.Option;
 import ghidra.app.util.bin.ByteProvider;
@@ -114,8 +116,9 @@ public class GhidraOrbisElfLoader extends ElfLoader {
 			.filter(o -> o.getName().equals("Image Base"))
 			.findFirst()
 			.orElseThrow();
-		long base = NumericUtilities.parseLong((String) baseOption.getValue());
-		if (base == 0) {
+		BigInteger zero = new BigInteger("0");
+		BigInteger base = NumericUtilities.parseHexBigInteger((String) baseOption.getValue());
+		if (base == zero) {
 			baseOption.setValue("1000000");
 		}
 		return options;
