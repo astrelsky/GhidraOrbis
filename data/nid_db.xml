@@ -29214,6 +29214,7 @@
 	<Entry obf="m7od1ikoZpQ" sym="RtcGetCurrentNetworkTickNative"/>
 	<Entry obf="u8M56qpqTtw" sym="rtld_printf"/>
 	<Entry obf="2I2RV6LyNng" sym="rtprio_thread"/>
+	<Entry obf="mpxAdqW7dKY" sym="libkernel_cpumode_platform"/>
 	<Entry obf="HI4N2S6ZWpE" sym="scalb"/>
 	<Entry obf="rjak2Xm+4mE" sym="scalbf"/>
 	<Entry obf="7Jp3g-qTgZw" sym="scalbln"/>
