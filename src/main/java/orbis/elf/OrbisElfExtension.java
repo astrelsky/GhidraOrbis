@@ -331,21 +331,13 @@ public class OrbisElfExtension extends ElfExtension {
 			return;
 		}
 		Data data = listing.createData(block.getStart(), struct);
-		DataTypeComponent[] comps = struct.getComponents();
-		if (comps.length == 0) {
-			return;
+		if (struct.hasFlexibleArrayComponent()) {
+			DataTypeComponent flexComp = struct.getFlexibleArrayComponent();
+			DataType dt = flexComp.getDataType();
+			Scalar count = (Scalar) data.getComponent(PARAM_SIZE_ORDINAL).getValue();
+			ArrayDataType array = new ArrayDataType(dt, (int) count.getValue(), dt.getLength());
+			listing.createData(data.getAddress().add(flexComp.getOffset()), array);
 		}
-		DataTypeComponent flexComp = comps[comps.length - 1];
-		if (!(flexComp.getDataType() instanceof Array)) {
-			return;
-		}
-		if (((Array) flexComp.getDataType()).getNumElements() != 0) {
-			return;
-		}
-		DataType dt = PointerDataType.dataType;
-		Scalar count = (Scalar) data.getComponent(PARAM_SIZE_ORDINAL).getValue();
-		ArrayDataType array = new ArrayDataType(dt, (int) count.getValue(), dt.getLength());
-		listing.createData(data.getAddress().add(flexComp.getOffset()), array);
 	}
 
 	private void markupFingerprint(ElfLoadHelper helper) {
