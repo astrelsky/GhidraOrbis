@@ -41,8 +41,8 @@ jobs:
 
       - name: Make artifact single zip 
         run: |
-               mkdir Ghidra-Cpp-Class-Analyzer/dist/bin
-               unzip Ghidra-Cpp-Class-Analyzer/dist/*.zip -d Ghidra-Cpp-Class-Analyzer/dist/bin
+          mkdir Ghidra-Cpp-Class-Analyzer/dist/bin
+          unzip Ghidra-Cpp-Class-Analyzer/dist/*.zip -d Ghidra-Cpp-Class-Analyzer/dist/bin
 
       - uses: actions/upload-artifact@v2
         with:
@@ -69,8 +69,8 @@ jobs:
 
       - name: Make artifact single zip 
         run: |
-               mkdir dist/bin
-               unzip dist/*.zip -d dist/bin
+          mkdir dist/bin
+          unzip dist/*.zip -d dist/bin
 
       - uses: actions/upload-artifact@v2
         with:
