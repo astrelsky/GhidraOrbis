@@ -1,4 +1,4 @@
-name: Build and publish
+name: Build and Publish
 
 on: [push, pull_request]
 
@@ -7,46 +7,83 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ghidra: ["10.0.4"]
+        ghidra: ['10.1']
     steps:
       - uses: actions/checkout@v2
+
       - uses: actions/setup-java@main
         with:
           java-version: '11'
-          java-package: jdk
-          architecture: x64
-          distribution: 'temurin'
+          distribution: temurin
+
+      - name: Get shortened SHA
+        run: echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-7`" >> $GITHUB_ENV
+
       - uses: er28-0652/setup-ghidra@master
         with:
           version: ${{ matrix.ghidra }}
+
       - uses: actions/checkout@v2
         with:
           repository: astrelsky/Ghidra-Cpp-Class-Analyzer
           path: Ghidra-Cpp-Class-Analyzer
+
       - uses: eskatos/gradle-command-action@v2
         with:
           gradle-version: 6.9
           build-root-directory: Ghidra-Cpp-Class-Analyzer
           arguments: buildExtension -PGHIDRA_INSTALL_DIR=${{ env.GHIDRA_INSTALL_DIR }}
+
       - name: Install the class analyzer as an extension forcefully
         run: |
            mkdir -p ~/.ghidra/.ghidra_${{ matrix.ghidra }}_PUBLIC/Extensions/
            unzip Ghidra-Cpp-Class-Analyzer/dist/*.zip -d ~/.ghidra/.ghidra_${{ matrix.ghidra }}_PUBLIC/Extensions/
+
+      - name: Make artifact single zip 
+        run: |
+               mkdir Ghidra-Cpp-Class-Analyzer/dist/bin
+               unzip Ghidra-Cpp-Class-Analyzer/dist/*.zip -d Ghidra-Cpp-Class-Analyzer/dist/bin
+
       - uses: actions/upload-artifact@v2
         with:
-          name: Ghidra-Cpp-Class-Analyzer
-          path: Ghidra-Cpp-Class-Analyzer/dist/*.zip
-          if-no-files-found: warn
+          name: Ghidra-Cpp-Class-Analyzer_${{ matrix.ghidra }}_${{ env.SHORT_SHA }}
+          path: Ghidra-Cpp-Class-Analyzer/dist/bin/*
+
+      - uses: svenstaro/upload-release-action@1d71c233f746f1dbd928efaf6de63056aa65f6eb
+        if: github.event_name != 'pull_request'
+        with:
+          release_name: Release for ${{ matrix.ghidra }} - ${{ env.SHORT_SHA }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: Ghidra-Cpp-Class-Analyzer/dist/*.zip
+          tag: ${{ env.SHORT_SHA }}
+          overwrite: true
+          file_glob: true
+
       - name: Cleanup
         run: rm -rf Ghidra-Cpp-Class-Analyzer
+
       - uses: eskatos/gradle-command-action@v2
         with:
           gradle-version: 6.9
           arguments: buildExtension -PGHIDRA_INSTALL_DIR=${{ env.GHIDRA_INSTALL_DIR }}
+
+      - name: Make artifact single zip 
+        run: |
+               mkdir dist/bin
+               unzip dist/*.zip -d dist/bin
+
       - uses: actions/upload-artifact@v2
         with:
-          name: GhidraOrbis
-          path: dist/*.zip
-          if-no-files-found: warn
+          name: GhidraOrbis_${{ matrix.ghidra }}_${{ env.SHORT_SHA }}
+          path: dist/bin/*
 
+      - uses: svenstaro/upload-release-action@1d71c233f746f1dbd928efaf6de63056aa65f6eb
+        if: github.event_name != 'pull_request'
+        with:
+          release_name: Release for ${{ matrix.ghidra }} - ${{ env.SHORT_SHA }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/*.zip
+          tag: ${{ env.SHORT_SHA }}
+          overwrite: true
+          file_glob: true
 
