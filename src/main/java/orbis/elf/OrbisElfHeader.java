@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.function.Consumer;
 
 import ghidra.app.util.bin.ByteProvider;
 import ghidra.app.util.bin.format.FactoryBundledWithBinaryReader;
@@ -38,10 +39,10 @@ public class OrbisElfHeader extends ElfHeader {
 		super();
 	}
 
-	public static OrbisElfHeader createElfHeader(GenericFactory factory, ByteProvider provider)
+	public static OrbisElfHeader createElfHeader(GenericFactory factory, ByteProvider provider, Consumer<String> errorConsumer)
 			throws ElfException {
 		OrbisElfHeader elfHeader = (OrbisElfHeader) factory.create(OrbisElfHeader.class);
-		elfHeader.initElfHeader(factory, provider);
+		elfHeader.initElfHeader(factory, provider, errorConsumer);
 		return elfHeader;
 	}
 

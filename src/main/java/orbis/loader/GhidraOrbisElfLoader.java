@@ -78,7 +78,7 @@ public class GhidraOrbisElfLoader extends ElfLoader {
 
 		try {
 			GenericFactory factory = MessageLogContinuesFactory.create(log);
-			OrbisElfHeader elf = OrbisElfHeader.createElfHeader(factory, provider);
+			OrbisElfHeader elf = OrbisElfHeader.createElfHeader(factory, provider, log::appendMsg);
 			OrbisElfProgramBuilder.loadElf(elf, program, options, log, monitor);
 			program.getUsrPropertyManager().createVoidPropertyMap("orbis");
 		} catch (DuplicateNameException e) {
@@ -101,7 +101,7 @@ public class GhidraOrbisElfLoader extends ElfLoader {
 	private static OrbisElfHeader getElfHeader(ByteProvider provider)
 			throws ElfException, IOException {
 		OrbisElfHeader elfHeader =
-			OrbisElfHeader.createElfHeader(RethrowContinuesFactory.INSTANCE, provider);
+			OrbisElfHeader.createElfHeader(RethrowContinuesFactory.INSTANCE, provider, ElfException::new);
 		return elfHeader;
 	}
 

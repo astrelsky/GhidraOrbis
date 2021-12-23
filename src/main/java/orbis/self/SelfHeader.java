@@ -2,12 +2,14 @@ package orbis.self;
 
 import java.io.*;
 import java.util.Arrays;
+import java.util.function.Consumer;
 
 import ghidra.app.util.bin.*;
 import ghidra.app.util.bin.format.elf.ElfException;
 import ghidra.app.util.bin.format.elf.ElfProgramHeader;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.app.util.importer.MessageLogContinuesFactory;
+import ghidra.util.Msg;
 import ghidra.util.exception.AssertException;
 
 import generic.continues.GenericFactory;
@@ -90,18 +92,18 @@ public final class SelfHeader {
 	}
 
 	public OrbisElfHeader buildElfHeader() throws IOException, ElfException {
-		return buildElfHeader(RethrowContinuesFactory.INSTANCE);
+		return buildElfHeader(RethrowContinuesFactory.INSTANCE, msg -> Msg.info(this, msg));
 	}
 
 	public OrbisElfHeader buildElfHeader(MessageLog log) throws IOException, ElfException {
 		GenericFactory factory = MessageLogContinuesFactory.create(log);
-		return buildElfHeader(factory);
+		return buildElfHeader(factory, log::appendMsg);
 	}
 
-	private OrbisElfHeader buildElfHeader(GenericFactory factory)
+	private OrbisElfHeader buildElfHeader(GenericFactory factory, Consumer<String> logger)
 			throws IOException, ElfException {
 		ByteProvider provider = getElfHeaderByteProvider();
-		return OrbisElfHeader.createElfHeader(factory, provider);
+		return OrbisElfHeader.createElfHeader(factory, provider, logger);
 	}
 
 	public ByteProvider getElfByteProvider() throws IOException {
