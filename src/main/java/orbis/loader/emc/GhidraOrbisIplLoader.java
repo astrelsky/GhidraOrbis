@@ -28,6 +28,7 @@ import ghidra.program.model.listing.Listing;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
+import ghidra.util.Msg;
 import ghidra.util.NumericUtilities;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
@@ -105,7 +106,12 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 		boolean success = false;
 		IplHeader header = new IplHeader(provider);
 		try {
-			data = header.getData(getKeyBytes(options));
+			byte[] key = getKeyBytes(options);
+			if (key == null && header.isEncrypted()) {
+				Msg.showInfo(this, null, "Import Failed", "File is encrypted but no decryption key was provided");
+				return false;
+			}
+			data = header.getData(key);
 		} catch (Exception e) {
 			messageLog.appendException(e);
 			return false;
@@ -167,7 +173,7 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 			IplHeader header = new IplHeader(provider);
 			if (header.isEncrypted()) {
 				String key = getKey(options);
-				if (key.isBlank()) {
+				if (key == null) {
 					return "Invalid decryption key";
 				}
 			}
@@ -184,6 +190,7 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 				String optName = option.getName();
 				if (optName.equals(OPTION_KEY)) {
 					key = (String) option.getValue();
+					break;
 				}
 			}
 		}
@@ -192,13 +199,16 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 
 	private byte[] getKeyBytes(List<Option> options) {
 		String key = getKey(options);
-		return NumericUtilities.convertStringToBytes(key);
+		return key != null ? NumericUtilities.convertStringToBytes(key) : null;
 	}
 
 	@Override
 	protected void postLoadProgramFixups(List<Program> loadedPrograms, DomainFolder folder,
 			List<Option> options, MessageLog messageLog, TaskMonitor monitor)
 			throws CancelledException, IOException {
+		if (loadedPrograms.isEmpty()) {
+			return;
+		}
 		DataType dt = IplHeader.dataType;
 		Program program = loadedPrograms.get(0);
 		int id = program.startTransaction("Creating Header");

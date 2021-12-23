@@ -1,6 +1,5 @@
 package orbis.bin.sflash;
 
-import java.io.File;
 import java.io.IOException;
 
 import ghidra.app.util.bin.ByteProvider;
@@ -13,8 +12,8 @@ import orbis.bin.FileSystemHeader;
 @FileSystemInfo(type = "sflash", description = "Orbis SFLASH", priority = FileSystemInfo.PRIORITY_LOW, factory = SflashFileSystemFactory.class)
 public class SflashFileSystem extends AbstractFileSystem<SflashEntry> {
 
-	protected SflashFileSystem(File file, FSRLRoot fsrl, ByteProvider provider) {
-		super(file, fsrl, provider);
+	public SflashFileSystem(FSRLRoot fsrl, ByteProvider provider) {
+		super(fsrl, provider);
 	}
 
 	@Override

@@ -1,6 +1,5 @@
 package orbis.bin;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -17,25 +16,23 @@ import org.apache.commons.io.input.BoundedInputStream;
  */
 public abstract class AbstractFileSystem<T extends FileInfoProvider> implements GFileSystem {
 
-	private final File file;
 	private final FSRLRoot fsrl;
-	private final ByteProvider provider;
+	private final RefdByteProvider provider;
 	private final FileSystemRefManager refManager;
 	private final FileSystemIndexHelper<T> helper;
 	private boolean isClosed;
 
-	protected AbstractFileSystem(File file, FSRLRoot fsrl, ByteProvider provider) {
+	protected AbstractFileSystem(FSRLRoot fsrl, ByteProvider provider) {
 		this.isClosed = false;
-		this.file = file;
 		this.fsrl = fsrl;
-		this.provider = provider;
+		this.provider = (RefdByteProvider) provider;
 		this.refManager = new FileSystemRefManager(this);
 		this.helper = new FileSystemIndexHelper<>(this, fsrl.getFS());
 	}
 
 	protected abstract FileSystemHeader<T> getHeader() throws IOException;
 
-	protected final ByteProvider getProvider() {
+	protected final RefdByteProvider getProvider() {
 		return provider;
 	}
 
@@ -46,18 +43,18 @@ public abstract class AbstractFileSystem<T extends FileInfoProvider> implements 
 		refManager.onClose();
 		provider.close();
 		if (wasClosed) {
-			throw new IOException(file.getName()+" was already closed.");
+			throw new IOException(getName()+" was already closed.");
 		}
-	}
-
-	@Override
-	public final String getName() {
-		return file.getName();
 	}
 
 	@Override
 	public final FSRLRoot getFSRL() {
 		return fsrl;
+	}
+
+	@Override
+	public final String getName() {
+		return provider.getName();
 	}
 
 	@Override
@@ -83,6 +80,16 @@ public abstract class AbstractFileSystem<T extends FileInfoProvider> implements 
 			throw new IOException("Unknown file " + file);
 		}
 		return new BoundedInputStream(entry.getInputStream(), entry.getSize());
+	}
+
+	@Override
+	public ByteProvider getByteProvider(GFile file, TaskMonitor monitor)
+			throws IOException, CancelledException {
+		T entry = helper.getMetadata(file);
+		if (entry == null) {
+			throw new IOException("Unknown file " + file);
+		}
+		return entry.getByteProvider();
 	}
 
 	@Override

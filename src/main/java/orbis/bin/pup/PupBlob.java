@@ -60,7 +60,7 @@ final class PupBlob implements FileInfoProvider {
 
 	byte[] getData() throws IOException {
 		byte[] data = reader.readByteArray(offset, (int) fileSize);
-		
+
 		return data;
 	}
 
@@ -71,6 +71,19 @@ final class PupBlob implements FileInfoProvider {
 			is = new InflaterInputStream(is);
 		}
 		return is;
+	}
+
+	@Override
+	public ByteProvider getByteProvider() {
+		try {
+			return new InputStreamByteProvider(getInputStream(), getSize());
+		} catch (IOException e) {
+			throw shh(e);
+		}
+	}
+
+	private static <E extends Throwable> RuntimeException shh(E t) {
+		return (RuntimeException)t;
 	}
 
 	@Override

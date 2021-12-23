@@ -78,12 +78,13 @@ public final class Slb2Header extends Slb2Structure implements FileSystemHeader<
 	private static Structure getDataType() {
 		Structure struct = new StructureDataType(PATH, "slb2_header", 0);
 		DataType magic = new ArrayDataType(CharDataType.dataType, 4, 1);
+		DataType entries = new ArrayDataType(Slb2Entry.dataType, 0, Slb2Entry.dataType.getLength());
 		struct.add(magic, "magic", null);
 		struct.add(DWordDataType.dataType, "version", null);
 		struct.add(DWordDataType.dataType, "flags", null);
 		struct.add(DWordDataType.dataType, "file_count", null);
 		struct.add(DWordDataType.dataType, "block_count", null);
-		struct.setFlexibleArrayComponent(Slb2Entry.dataType, "entry_list", null);
+		struct.add(entries, "entry_list", null);
 		struct.setToMachineAligned();
 		return struct;
 	}

@@ -20,7 +20,8 @@ public final class OrbisDataUtils {
 		struct.add(DWordDataType.dataType, "p_sdk_ver", null);
 		array = new ArrayDataType(QWordDataType.dataType, 4, QWordDataType.dataType.getLength());
 		struct.add(array, "p_unknown", null);
-		struct.setFlexibleArrayComponent(PointerDataType.dataType, "entries", null);
+		array = new ArrayDataType(PointerDataType.dataType, 0, PointerDataType.dataType.getLength());
+		struct.add(array, "entries", null);
 		struct.setToMachineAligned();
 		return struct;
 	}

@@ -1,6 +1,5 @@
 package orbis.bin.pup;
 
-import java.io.File;
 import java.io.IOException;
 
 import ghidra.app.util.bin.ByteProvider;
@@ -13,13 +12,13 @@ import orbis.bin.FileSystemHeader;
 @FileSystemInfo(type = "pup", description = "Update Package", priority = FileSystemInfo.PRIORITY_LOW, factory = PupFileSystemFactory.class)
 public class PupFileSystem extends AbstractFileSystem<PupBlob> {
 
-	PupFileSystem(File file, FSRLRoot fsrl, ByteProvider provider) {
-		super(file, fsrl, provider);
+	public PupFileSystem(FSRLRoot fsrl, ByteProvider provider) {
+		super(fsrl, provider);
 	}
 
 	@Override
 	protected FileSystemHeader<PupBlob> getHeader() throws IOException {
 		return new PupHeader(getProvider());
 	}
-	
+
 }

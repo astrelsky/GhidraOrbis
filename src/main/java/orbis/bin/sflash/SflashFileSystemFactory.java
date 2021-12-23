@@ -1,22 +1,15 @@
 package orbis.bin.sflash;
 
-import java.io.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
-import ghidra.app.util.bin.ByteProvider;
 import ghidra.formats.gfilesystem.FSRL;
-import ghidra.formats.gfilesystem.FSRLRoot;
-import ghidra.formats.gfilesystem.FileSystemService;
-import ghidra.formats.gfilesystem.factory.GFileSystemFactoryFull;
-import ghidra.formats.gfilesystem.factory.GFileSystemProbeBytesOnly;
 import ghidra.util.exception.AssertException;
-import ghidra.util.exception.CancelledException;
-import ghidra.util.task.TaskMonitor;
 
-public class SflashFileSystemFactory implements GFileSystemFactoryFull<SflashFileSystem>,
-		GFileSystemProbeBytesOnly {
+import orbis.bin.AbstractFileSystemFactory;
+
+public class SflashFileSystemFactory extends AbstractFileSystemFactory<SflashFileSystem> {
 
 	private static final byte[] MAGIC_DIGEST = new byte[] {
 		(byte) 0x63, (byte) 0x0b, (byte) 0xd2, (byte) 0x7d,
@@ -40,15 +33,6 @@ public class SflashFileSystemFactory implements GFileSystemFactoryFull<SflashFil
 		}
 		md5.update(Arrays.copyOf(startBytes, getBytesRequired()));
 		return Arrays.equals(md5.digest(), MAGIC_DIGEST);
-	}
-
-	@Override
-	public SflashFileSystem create(FSRL containerFSRL, FSRLRoot targetFSRL,
-			ByteProvider byteProvider, File containerFile, FileSystemService fsService,
-			TaskMonitor monitor) throws IOException, CancelledException {
-		SflashFileSystem fs = new SflashFileSystem(containerFile, targetFSRL, byteProvider);
-		fs.mount(monitor);
-		return fs;
 	}
 
 }
