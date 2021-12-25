@@ -35,7 +35,10 @@ else {
 //----------------------END "DO NOT MODIFY" SECTION-------------------------------
 def ghidraUserDir = System.getProperty("user.home") + "/.ghidra/.${DISTRO_PREFIX}_${RELEASE_NAME}"
 
-repositories { mavenCentral() }
+repositories {
+	mavenLocal()
+	mavenCentral()
+}
 
 dependencies {
 	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/patch', include: "**/*.jar")
