@@ -1,6 +1,7 @@
 package orbis.self;
 
 import java.io.*;
+import java.nio.file.AccessMode;
 import java.util.Arrays;
 import java.util.function.Consumer;
 
@@ -177,10 +178,10 @@ public final class SelfHeader {
 
 	}
 
-	private static class TempRandomAccessByteProvider extends RandomAccessByteProvider {
+	private static class TempRandomAccessByteProvider extends FileByteProvider {
 
 		TempRandomAccessByteProvider(File f) throws IOException {
-			super(f);
+			super(f, null, AccessMode.READ);
 		}
 
 		@Override
