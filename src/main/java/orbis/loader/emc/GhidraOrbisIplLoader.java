@@ -1,6 +1,7 @@
 package orbis.loader.emc;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -8,9 +9,7 @@ import java.util.List;
 import java.util.Set;
 
 import ghidra.app.util.Option;
-import ghidra.app.util.bin.ByteArrayProvider;
 import ghidra.app.util.bin.ByteProvider;
-import ghidra.app.util.bin.ByteProviderWrapper;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.app.util.opinion.AbstractProgramLoader;
 import ghidra.app.util.opinion.LoadSpec;
@@ -28,12 +27,13 @@ import ghidra.program.model.listing.Listing;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
+import ghidra.program.model.util.StringPropertyMap;
 import ghidra.util.Msg;
-import ghidra.util.NumericUtilities;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
+import orbis.bin.ipl.EncryptedDataException;
 import orbis.bin.ipl.IplHeader;
 import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
 
@@ -41,7 +41,9 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 
 	private static final LanguageCompilerSpecPair SPEC =
 		new LanguageCompilerSpecPair("ARM:LE:32:v7", "default");
-	private static final String OPTION_KEY = "Key";
+	private static final String MAP_NAME = "Encryption Keys";
+	private static final String CIPHER_KEY = "Cipher Key";
+	private static final String HASHER_KEY = "Hasher Key";
 	private static final String HEADER_BLOCK_NAME = "_header";
 
 	@Override
@@ -102,34 +104,27 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 	protected boolean loadProgramInto(ByteProvider provider, LoadSpec loadSpec,
 			List<Option> options, MessageLog messageLog, Program program, TaskMonitor monitor)
 			throws IOException, CancelledException {
-		byte[] data;
 		boolean success = false;
 		IplHeader header = new IplHeader(provider);
 		try {
-			byte[] key = getKeyBytes(options);
-			if (key == null && header.isEncrypted()) {
-				Msg.showInfo(this, null, "Import Failed", "File is encrypted but no decryption key was provided");
-				return false;
-			}
-			data = header.getData(key);
+			header.decrypt(getKey(options, CIPHER_KEY), getKey(options, HASHER_KEY));
+		} catch (EncryptedDataException e) {
+			Msg.showInfo(this, null, "Import Failed", e.getMessage());
+			return false;
 		} catch (Exception e) {
 			messageLog.appendException(e);
 			return false;
 		}
-		ByteProvider decProvider = new ByteArrayProvider(data);
-		ByteProvider bodyProvider = null;
-		ByteProvider headerProvider = null;
+		InputStream headerStream = null;
+		InputStream bodyStream = null;
 		try {
-			bodyProvider = new ByteProviderWrapper(
-				decProvider, header.getHeaderLength(), header.getBodyLength());
+			headerStream = header.getHeaderInputStream();
+			bodyStream = header.getBodyInputStream();
 			Memory mem = program.getMemory();
 			AddressSpace defaultSpace = program.getAddressFactory().getDefaultAddressSpace();
-			headerProvider = new ByteProviderWrapper(
-				decProvider, 0, header.getHeaderLength());
 			Address base = defaultSpace.getAddress(0);
 			FileBytes bytes = mem.createFileBytes(
-				program.getName(), 0, header.getHeaderLength(),
-				headerProvider.getInputStream(0), monitor);
+				program.getName(), 0, header.getHeaderLength(), headerStream, monitor);
 			MemoryBlock block = mem.createInitializedBlock(
 				HEADER_BLOCK_NAME, base, bytes, 0, header.getHeaderLength(), true);
 			block.setRead(false);
@@ -138,8 +133,7 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 			program.getDataTypeManager().resolve(header.toDataType(), KEEP_HANDLER);
 			base = defaultSpace.getAddress(header.getLoadAddress0());
 			block = mem.createInitializedBlock(
-				"body", base, bodyProvider.getInputStream(0),
-				header.getBodyLength(), monitor, false);
+				"body", base, bodyStream, header.getBodyLength(), monitor, false);
 			block.setRead(true);
 			block.setWrite(false);
 			block.setExecute(true);
@@ -147,11 +141,11 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 		} catch (Exception e) {
 			messageLog.appendException(e);
 		} finally {
-			if (bodyProvider != null) {
-				bodyProvider.close();
+			if (headerStream != null) {
+				headerStream.close();
 			}
-			if (headerProvider != null) {
-				headerProvider.close();
+			if (bodyStream != null) {
+				bodyStream.close();
 			}
 		}
 		return success;
@@ -161,45 +155,19 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 	public List<Option> getDefaultOptions(ByteProvider provider, LoadSpec loadSpec,
 			DomainObject domainObject, boolean loadIntoProgram) {
 		List<Option> list = new ArrayList<Option>();
-		list.add(new Option(OPTION_KEY, String.class));
+		list.add(new Option(CIPHER_KEY, String.class));
+		list.add(new Option(HASHER_KEY, String.class));
 		list.addAll(super.getDefaultOptions(provider, loadSpec, domainObject, loadIntoProgram));
 		return list;
 	}
 
-	@Override
-	public String validateOptions(ByteProvider provider, LoadSpec loadSpec, List<Option> options,
-			Program program) {
-		try {
-			IplHeader header = new IplHeader(provider);
-			if (header.isEncrypted()) {
-				String key = getKey(options);
-				if (key == null) {
-					return "Invalid decryption key";
-				}
-			}
-		} catch (Exception e) {
-			return e.getMessage();
-		}
-		return super.validateOptions(provider, loadSpec, options, program);
-	}
-
-	private String getKey(List<Option> options) {
-		String key = "";
-		if (options != null) {
-			for (Option option : options) {
-				String optName = option.getName();
-				if (optName.equals(OPTION_KEY)) {
-					key = (String) option.getValue();
-					break;
-				}
-			}
-		}
-		return key;
-	}
-
-	private byte[] getKeyBytes(List<Option> options) {
-		String key = getKey(options);
-		return key != null ? NumericUtilities.convertStringToBytes(key) : null;
+	private String getKey(List<Option> options, String name) {
+		return options.stream()
+			.filter(o -> o.getName().equals(name))
+			.map(Option::getValue)
+			.map(String.class::cast)
+			.findFirst()
+			.orElse(null);
 	}
 
 	@Override
@@ -214,6 +182,14 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 		int id = program.startTransaction("Creating Header");
 		boolean success = false;
 		try {
+			String cipherKey = getKey(options, CIPHER_KEY);
+			String hasherKey = cipherKey != null ? getKey(options, HASHER_KEY) : null;
+			if (cipherKey != null) {
+				AddressSpace defaultSpace = program.getAddressFactory().getDefaultAddressSpace();
+				StringPropertyMap map = program.getUsrPropertyManager().createStringPropertyMap(MAP_NAME);
+				map.add(defaultSpace.getAddress(0), cipherKey);
+				map.add(defaultSpace.getAddress(1), hasherKey);
+			}
 			Listing listing = program.getListing();
 			Address base = program.getMemory().getBlock(HEADER_BLOCK_NAME).getStart();
 			listing.createData(base, dt);
