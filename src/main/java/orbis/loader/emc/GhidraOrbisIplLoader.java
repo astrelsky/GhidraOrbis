@@ -41,10 +41,11 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 
 	private static final LanguageCompilerSpecPair SPEC =
 		new LanguageCompilerSpecPair("ARM:LE:32:v7", "default");
-	private static final String MAP_NAME = "Encryption Keys";
+	public static final String MAP_NAME = "Encryption Keys";
 	private static final String CIPHER_KEY = "Cipher Key";
 	private static final String HASHER_KEY = "Hasher Key";
 	private static final String HEADER_BLOCK_NAME = "_header";
+	public static final String IPL_PROPERTY_NAME = "IPL Format";
 
 	@Override
 	public Collection<LoadSpec> findSupportedLoadSpecs(ByteProvider provider) throws IOException {
@@ -132,11 +133,14 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 			block.setExecute(false);
 			program.getDataTypeManager().resolve(header.toDataType(), KEEP_HANDLER);
 			base = defaultSpace.getAddress(header.getLoadAddress0());
+			bytes = mem.createFileBytes(
+				program.getName(), 0, header.getBodyLength(), bodyStream, monitor);
 			block = mem.createInitializedBlock(
-				"body", base, bodyStream, header.getBodyLength(), monitor, false);
+				"body", base, bytes, 0, header.getBodyLength(), true);
 			block.setRead(true);
 			block.setWrite(false);
 			block.setExecute(true);
+			program.getUsrPropertyManager().createVoidPropertyMap(IPL_PROPERTY_NAME);
 			success = true;
 		} catch (Exception e) {
 			messageLog.appendException(e);
