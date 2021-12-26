@@ -61,6 +61,12 @@ public class IplHeader implements StructConverter {
 		this.body = ByteBuffer.wrap(reader.readNextByteArray(header.getBodyLength()));
 	}
 
+	public IplHeader(ByteBuffer header, ByteBuffer body) {
+		this.header = new HeaderImpl(header);
+		this.body = body;
+		this.header.setBodyLength(body.limit());
+	}
+
 	@Override
 	public DataType toDataType() {
 		return dataType;
@@ -160,12 +166,12 @@ public class IplHeader implements StructConverter {
 		if (!isEncrypted()) {
 			return;
 		}
-		byte[] cipherKey = new byte[KEY_LENGTH];
-		byte[] hasherKey = new byte[KEY_LENGTH];
-		if (cKey != null && cKey.length() == KEY_LENGTH*2) {
+		byte[] cipherKey = null;
+		byte[] hasherKey = null;
+		if (cKey != null && cKey.length() == KEY_LENGTH * 2) {
 			cipherKey = NumericUtilities.convertStringToBytes(cKey);
 		}
-		if (hKey != null && hKey.length() == KEY_LENGTH*2) {
+		if (hKey != null && hKey.length() == KEY_LENGTH * 2) {
 			hasherKey = NumericUtilities.convertStringToBytes(hKey);
 		}
 		if (cipherKey == null || hasherKey == null) {
@@ -178,49 +184,83 @@ public class IplHeader implements StructConverter {
 			body.position(0);
 			Cipher cipher = getCipher(header.getAesKey());
 			cipher.doFinal(body.slice(), body);
-		}catch (ShortBufferException e) {
+		} catch (ShortBufferException e) {
 			throw new AssertException(e);
 		}
 	}
 
-	private void checkHeader(byte[] hasherKey) throws EncryptedDataException {
-		byte[] digest = null;
+	public void encrypt(String cKey, String hKey)
+			throws IllegalBlockSizeException, BadPaddingException {
+		byte[] cipherKey = null;
+		byte[] hasherKey = null;
+		if (cKey != null && cKey.length() == KEY_LENGTH * 2) {
+			cipherKey = NumericUtilities.convertStringToBytes(cKey);
+		}
+		if (hKey != null && hKey.length() == KEY_LENGTH * 2) {
+			hasherKey = NumericUtilities.convertStringToBytes(hKey);
+		}
+		if (cipherKey == null || hasherKey == null) {
+			return;
+		}
+
+		try {
+			body.position(0);
+			Cipher cipher = getCipher(Cipher.ENCRYPT_MODE, header.getAesKey());
+			cipher.doFinal(body.slice(), body);
+			header.setBodyDigest(hashBody());
+			header.setHeaderDigest(hashHeader(hasherKey));
+			header.encrypt(cipherKey);
+		} catch (ShortBufferException e) {
+			throw new AssertException(e);
+		}
+	}
+
+	private byte[] hashHeader(byte[] hasherKey) {
 		try {
 			byte[] data = new byte[0x6c];
 			getHeader().get(data);
 			SecretKeySpec secretKeySpec = new SecretKeySpec(hasherKey, HMAC_ALGO);
 		    Mac mac = Mac.getInstance(HMAC_ALGO);
 		    mac.init(secretKeySpec);
-		    digest = mac.doFinal(data);
+		    return mac.doFinal(data);
 		} catch (Exception e) {
 			throw new AssertException(e);
 		}
-		if (!Arrays.equals(header.getHeaderDigest(), digest)) {
+	}
+
+	private void checkHeader(byte[] hasherKey) throws EncryptedDataException {
+		if (!Arrays.equals(header.getHeaderDigest(), hashHeader(hasherKey))) {
 			throw new EncryptedDataException("Header validation failed. Hasher key is incorrect.");
 		}
 	}
 
-	private void checkBody() throws EncryptedDataException {
-		byte[] digest = null;
+	private byte[] hashBody() {
 		try {
 			SecretKeySpec secretKeySpec = new SecretKeySpec(header.getHmacKey(), HMAC_ALGO);
 		    Mac mac = Mac.getInstance(HMAC_ALGO);
 		    mac.init(secretKeySpec);
-		    digest = mac.doFinal(body.array());
+		    return mac.doFinal(body.array());
 		} catch (Exception e) {
 			throw new AssertException(e);
 		}
-		if (!Arrays.equals(header.getBodyDigest(), digest)) {
+	}
+
+	private void checkBody() throws EncryptedDataException {
+		if (!Arrays.equals(header.getBodyDigest(), hashBody())) {
 			throw new EncryptedDataException("Body validation failed. Cipher key is incorrect.");
 		}
 	}
 
 	private static Cipher getCipher(byte[] key) {
+		return getCipher(Cipher.DECRYPT_MODE, key);
+	}
+
+	private static Cipher getCipher(int mode, byte[] key) {
 		try {
 			IvParameterSpec iv = new IvParameterSpec(new byte[16]);
 			Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
 			SecretKeySpec spec = new SecretKeySpec(key, "AES");
-			cipher.init(Cipher.DECRYPT_MODE, spec, iv);
+			cipher.init(mode, spec, iv);
 			return cipher;
 		} catch (Exception e) {
 			throw new AssertException(e);
@@ -292,10 +332,15 @@ public class IplHeader implements StructConverter {
 
 	private static class HeaderImpl {
 		private static final int LENGTH = 0x80;
-		private final ByteBuffer buf = ByteBuffer.allocate(LENGTH).order(LITTLE_ENDIAN);
+		private final ByteBuffer buf;
 
 		HeaderImpl(BinaryReader reader) throws IOException {
-			buf.put(reader.readNextByteArray(LENGTH));
+			buf = ByteBuffer.wrap(reader.readNextByteArray(LENGTH));
+			buf.order(LITTLE_ENDIAN);
+		}
+
+		HeaderImpl(ByteBuffer buf) {
+			this.buf = buf.order(LITTLE_ENDIAN);
 		}
 
 		ByteBuffer getBuffer() {
@@ -330,6 +375,12 @@ public class IplHeader implements StructConverter {
 			return buf.position(0xc)
 				.asIntBuffer()
 				.get();
+		}
+
+		void setBodyLength(int length) {
+			buf.position(0xc)
+				.asIntBuffer()
+				.put(length);
 		}
 
 		int getLoadAddress0() {
@@ -371,6 +422,11 @@ public class IplHeader implements StructConverter {
 			return res;
 		}
 
+		void setBodyDigest(byte[] digest) {
+			buf.position(0x50);
+			buf.put(digest);
+		}
+
 		byte[] getHeaderDigest() {
 			byte[] res = new byte[DIGEST_LENGTH];
 			buf.position(0x6c);
@@ -378,9 +434,24 @@ public class IplHeader implements StructConverter {
 			return res;
 		}
 
+		void setHeaderDigest(byte[] digest) {
+			buf.position(0x6c);
+			buf.put(digest);
+		}
+
 		void decrypt(byte[] key) throws IllegalBlockSizeException, BadPaddingException {
 			try {
 				Cipher cipher = getCipher(key);
+				buf.position(0x30);
+				cipher.doFinal(buf.slice(), buf);
+			} catch (ShortBufferException e) {
+				throw new AssertException(e);
+			}
+		}
+
+		void encrypt(byte[] key) throws IllegalBlockSizeException, BadPaddingException {
+			try {
+				Cipher cipher = getCipher(Cipher.ENCRYPT_MODE, key);
 				buf.position(0x30);
 				cipher.doFinal(buf.slice(), buf);
 			} catch (ShortBufferException e) {
