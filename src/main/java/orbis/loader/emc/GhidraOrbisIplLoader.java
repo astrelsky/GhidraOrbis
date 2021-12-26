@@ -10,8 +10,11 @@ import java.util.Set;
 
 import ghidra.app.util.Option;
 import ghidra.app.util.bin.ByteProvider;
+import ghidra.app.util.bin.format.elf.ElfHeader;
 import ghidra.app.util.importer.MessageLog;
+import ghidra.app.util.importer.MessageLogContinuesFactory;
 import ghidra.app.util.opinion.AbstractProgramLoader;
+import ghidra.app.util.opinion.DefaultElfProgramBuilder;
 import ghidra.app.util.opinion.LoadSpec;
 import ghidra.app.util.opinion.LoaderTier;
 import ghidra.framework.model.DomainFolder;
@@ -33,6 +36,7 @@ import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
+import generic.continues.GenericFactory;
 import orbis.bin.ipl.EncryptedDataException;
 import orbis.bin.ipl.IplHeader;
 import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
@@ -103,7 +107,7 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 
 	@Override
 	protected boolean loadProgramInto(ByteProvider provider, LoadSpec loadSpec,
-			List<Option> options, MessageLog messageLog, Program program, TaskMonitor monitor)
+			List<Option> options, MessageLog log, Program program, TaskMonitor monitor)
 			throws IOException, CancelledException {
 		boolean success = false;
 		IplHeader header = new IplHeader(provider);
@@ -113,7 +117,7 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 			Msg.showInfo(this, null, "Import Failed", e.getMessage());
 			return false;
 		} catch (Exception e) {
-			messageLog.appendException(e);
+			log.appendException(e);
 			return false;
 		}
 		InputStream headerStream = null;
@@ -126,24 +130,32 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 			Address base = defaultSpace.getAddress(0);
 			FileBytes bytes = mem.createFileBytes(
 				program.getName(), 0, header.getHeaderLength(), headerStream, monitor);
+			if (header.isEAP()) {
+				GenericFactory factory = MessageLogContinuesFactory.create(log);
+				ByteProvider bp = header.getBodyProvider(provider.getFSRL());
+				ElfHeader elf = ElfHeader.createElfHeader(factory, bp, log::appendMsg);
+				DefaultElfProgramBuilder.loadElf(elf, program, options, log, monitor);
+			} else {
+				base = defaultSpace.getAddress(header.getLoadAddress0());
+				bytes = mem.createFileBytes(
+					program.getName(), 0, header.getBodyLength(), bodyStream, monitor);
+				MemoryBlock block = mem.createInitializedBlock(
+					"body", base, bytes, 0, header.getBodyLength(), true);
+				block.setRead(true);
+				block.setWrite(false);
+				block.setExecute(true);
+			}
 			MemoryBlock block = mem.createInitializedBlock(
 				HEADER_BLOCK_NAME, base, bytes, 0, header.getHeaderLength(), true);
 			block.setRead(false);
 			block.setWrite(false);
 			block.setExecute(false);
 			program.getDataTypeManager().resolve(header.toDataType(), KEEP_HANDLER);
-			base = defaultSpace.getAddress(header.getLoadAddress0());
-			bytes = mem.createFileBytes(
-				program.getName(), 0, header.getBodyLength(), bodyStream, monitor);
-			block = mem.createInitializedBlock(
-				"body", base, bytes, 0, header.getBodyLength(), true);
-			block.setRead(true);
-			block.setWrite(false);
-			block.setExecute(true);
 			program.getUsrPropertyManager().createVoidPropertyMap(IPL_PROPERTY_NAME);
 			success = true;
 		} catch (Exception e) {
-			messageLog.appendException(e);
+			log.appendException(e);
+			e.printStackTrace();
 		} finally {
 			if (headerStream != null) {
 				headerStream.close();
@@ -176,7 +188,7 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 
 	@Override
 	protected void postLoadProgramFixups(List<Program> loadedPrograms, DomainFolder folder,
-			List<Option> options, MessageLog messageLog, TaskMonitor monitor)
+			List<Option> options, MessageLog log, TaskMonitor monitor)
 			throws CancelledException, IOException {
 		if (loadedPrograms.isEmpty()) {
 			return;
@@ -199,7 +211,7 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 			listing.createData(base, dt);
 			success = true;
 		} catch (Exception e) {
-			messageLog.appendException(e);
+			log.appendException(e);
 		} finally {
 			program.endTransaction(id, success);
 		}

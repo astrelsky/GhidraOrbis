@@ -1,6 +1,7 @@
 .gradle/*
 build/*
 .vscode/*
+lib/
 
 # Compiled class file
 *.class

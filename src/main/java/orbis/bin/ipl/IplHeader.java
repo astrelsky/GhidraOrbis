@@ -15,8 +15,10 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 import ghidra.app.util.bin.BinaryReader;
+import ghidra.app.util.bin.ByteArrayProvider;
 import ghidra.app.util.bin.ByteProvider;
 import ghidra.app.util.bin.StructConverter;
+import ghidra.formats.gfilesystem.FSRL;
 import ghidra.program.model.data.ArrayDataType;
 import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
@@ -86,6 +88,10 @@ public class IplHeader implements StructConverter {
 
 	public InputStream getBodyInputStream() {
 		return new ByteArrayInputStream(body.array());
+	}
+
+	public ByteProvider getBodyProvider(FSRL fsrl) {
+		return new ByteArrayProvider(body.array(), fsrl);
 	}
 
 	/**
@@ -159,6 +165,14 @@ public class IplHeader implements StructConverter {
 
 	public boolean isEncrypted() {
 		return header.isEncrypted();
+	}
+
+	public boolean isEAP() {
+		return header.isEAP();
+	}
+
+	public boolean isEMC() {
+		return header.isEMC();
 	}
 
 	public void decrypt(String cKey, String hKey)
@@ -358,10 +372,15 @@ public class IplHeader implements StructConverter {
 		}
 
 		boolean isEncrypted() {
-			int v = buf.position(0x6)
-				.asShortBuffer()
-				.get();
-			return (v & 0x800) != 0;
+			return (buf.position(0x7).get() & 0x8) != 0;
+		}
+
+		public boolean isEAP() {
+			return (buf.position(0x7).get() & 0x60) != 0;
+		}
+
+		public boolean isEMC() {
+			return (buf.position(0x7).get() & 0x40) != 0;
 		}
 
 		byte[] getSeed() {
