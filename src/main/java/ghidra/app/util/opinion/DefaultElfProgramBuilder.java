@@ -1,5 +1,6 @@
 package ghidra.app.util.opinion;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -28,6 +29,12 @@ public class DefaultElfProgramBuilder extends ElfProgramBuilder {
 	protected DefaultElfProgramBuilder(ElfHeader elf, Program program, List<Option> options,
 			MessageLog log) {
 		super(elf, program, options, log);
+	}
+
+	public static void loadElf(ElfHeader elf, Program program, List<Option> options, MessageLog log,
+			TaskMonitor monitor) throws IOException, CancelledException {
+		DefaultElfProgramBuilder elfProgramBuilder = new DefaultElfProgramBuilder(elf, program, options, log);
+		elfProgramBuilder.load(monitor);
 	}
 
 	protected boolean shouldIncludeOtherBlocks() {
