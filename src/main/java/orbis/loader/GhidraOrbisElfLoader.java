@@ -3,7 +3,6 @@ package orbis.loader;
 import java.io.IOException;
 import java.util.*;
 
-
 import ghidra.app.util.Option;
 import ghidra.app.util.bin.ByteProvider;
 import ghidra.app.util.bin.format.elf.*;
