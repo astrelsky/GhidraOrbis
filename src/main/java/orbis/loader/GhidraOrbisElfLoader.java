@@ -116,9 +116,8 @@ public class GhidraOrbisElfLoader extends ElfLoader {
 			.filter(o -> o.getName().equals("Image Base"))
 			.findFirst()
 			.orElseThrow();
-		BigInteger zero = new BigInteger("0");
-		BigInteger base = NumericUtilities.parseHexBigInteger((String) baseOption.getValue());
-		if (base == zero) {
+		long base = Long.parseUnsignedLong((String) baseOption.getValue(), 16);
+		if (base == 0) {
 			baseOption.setValue("1000000");
 		}
 		return options;
