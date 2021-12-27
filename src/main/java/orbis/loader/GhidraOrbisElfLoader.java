@@ -2,7 +2,6 @@ package orbis.loader;
 
 import java.io.IOException;
 import java.util.*;
-import java.math.BigInteger;
 
 
 import ghidra.app.util.Option;
