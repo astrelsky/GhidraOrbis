@@ -12,7 +12,6 @@ import ghidra.app.util.opinion.*;
 import ghidra.framework.model.DomainObject;
 import ghidra.program.model.lang.LanguageCompilerSpecPair;
 import ghidra.program.model.listing.Program;
-import ghidra.util.NumericUtilities;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.task.TaskMonitor;
