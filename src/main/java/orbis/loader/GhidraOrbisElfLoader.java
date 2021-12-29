@@ -114,7 +114,7 @@ public class GhidraOrbisElfLoader extends ElfLoader {
 			.filter(o -> o.getName().equals("Image Base"))
 			.findFirst()
 			.orElseThrow();
-		long base = NumericUtilities.parseLong((String) baseOption.getValue());
+		long base = Long.parseUnsignedLong((String) baseOption.getValue(), 16);
 		if (base == 0) {
 			baseOption.setValue("1000000");
 		}
