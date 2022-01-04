@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import ghidra.formats.gfilesystem.RefdByteProvider;
+import ghidra.app.util.bin.ByteProvider;
 import ghidra.framework.Application;
 import ghidra.util.exception.AssertException;
 import ghidra.xml.XmlElement;
@@ -22,7 +22,7 @@ public final class SflashHeader implements FileSystemHeader<SflashEntry> {
 
 	private final List<SflashEntry> entries;
 
-	SflashHeader(RefdByteProvider provider) throws IOException {
+	SflashHeader(ByteProvider provider) throws IOException {
 		ResourceFile file = Application.findDataFileInAnyModule("sflash.xml");
 		if (file == null) {
 			throw new IOException("sflash.xml not found! Please check the plugin installation.");

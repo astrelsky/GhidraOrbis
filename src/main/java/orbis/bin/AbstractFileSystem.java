@@ -17,7 +17,7 @@ import org.apache.commons.io.input.BoundedInputStream;
 public abstract class AbstractFileSystem<T extends FileInfoProvider> implements GFileSystem {
 
 	private final FSRLRoot fsrl;
-	private final RefdByteProvider provider;
+	private final ByteProvider provider;
 	private final FileSystemRefManager refManager;
 	private final FileSystemIndexHelper<T> helper;
 	private boolean isClosed;
@@ -25,14 +25,14 @@ public abstract class AbstractFileSystem<T extends FileInfoProvider> implements 
 	protected AbstractFileSystem(FSRLRoot fsrl, ByteProvider provider) {
 		this.isClosed = false;
 		this.fsrl = fsrl;
-		this.provider = (RefdByteProvider) provider;
+		this.provider = provider;
 		this.refManager = new FileSystemRefManager(this);
 		this.helper = new FileSystemIndexHelper<>(this, fsrl.getFS());
 	}
 
 	protected abstract FileSystemHeader<T> getHeader() throws IOException;
 
-	protected final RefdByteProvider getProvider() {
+	protected final ByteProvider getProvider() {
 		return provider;
 	}
 
@@ -54,7 +54,7 @@ public abstract class AbstractFileSystem<T extends FileInfoProvider> implements 
 
 	@Override
 	public final String getName() {
-		return provider.getName();
+		return fsrl.getContainer().getName();
 	}
 
 	@Override
