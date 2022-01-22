@@ -106,7 +106,10 @@ public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
 		}
 		frag = getFragment(".plt");
 		Address end = searcher.getAddress();
-		frag.move(start, end != null ? end.previous() : frag.getMaxAddress());
+		if (end == null || frag == null || end.previous() == null) {
+			return null;
+		}
+		frag.move(start, end.previous());
 		return end;
 	}
 
