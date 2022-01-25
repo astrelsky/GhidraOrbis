@@ -103,12 +103,6 @@ public class OrbisElfProgramBuilder extends DefaultElfProgramBuilder {
 				return;
 			}
 
-			if (elf.e_shnum() != 0) {
-				// discard tiny alignment/filler segment fragments when
-				// section headers are present
-				pruneDiscardableBlocks();
-			}
-
 			markupElfHeader(monitor);
 			markupProgramHeaders(monitor);
 			markupSectionHeaders(monitor);

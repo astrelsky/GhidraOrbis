@@ -163,10 +163,6 @@ public class DefaultElfProgramBuilder extends ElfProgramBuilder {
 		invoke("joinProgramTreeFragments", block1End, block2Start);
 	}
 
-	protected void pruneDiscardableBlocks() {
-		invoke("pruneDiscardableBlocks");
-	}
-
 	protected void markupElfHeader(TaskMonitor monitor) {
 		invoke("markupElfHeader", monitor);
 	}
@@ -305,7 +301,7 @@ public class DefaultElfProgramBuilder extends ElfProgramBuilder {
 		try {
 			return s.get();
 		} catch (Exception e) {
-			throw new AssertException(e);
+			throw new AssertException("This should never occur", e);
 		}
 	}
 
@@ -313,7 +309,7 @@ public class DefaultElfProgramBuilder extends ElfProgramBuilder {
 		try {
 			c.call();
 		} catch (Exception e) {
-			throw new AssertException(e);
+			throw new AssertException("This should never occur", e);
 		}
 	}
 
