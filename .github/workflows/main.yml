@@ -13,7 +13,8 @@ jobs:
       - name: Checkout GhidraOrbis
         uses: actions/checkout@v3
 
-      - uses: actions/setup-java@v2
+      - name: Setup Java
+        uses: actions/setup-java@v3
         with:
           java-version: 11
           distribution: temurin
@@ -44,27 +45,17 @@ jobs:
            mkdir -p ~/.ghidra/.ghidra_${{ matrix.ghidra }}_PUBLIC/Extensions/
            unzip Ghidra-Cpp-Class-Analyzer/dist/*.zip -d ~/.ghidra/.ghidra_${{ matrix.ghidra }}_PUBLIC/Extensions/
 
-      - name: Make artifact single zip 
+      - name: Copy artifact
         run: |
-          mkdir Ghidra-Cpp-Class-Analyzer/dist/bin
-          unzip Ghidra-Cpp-Class-Analyzer/dist/*.zip -d Ghidra-Cpp-Class-Analyzer/dist/bin
+          mkdir dist-bin
+          cp Ghidra-Cpp-Class-Analyzer/dist/*.zip dist-bin
 
       - name: Upload Ghidra-Cpp-Class-Analyzer artifact
         uses: actions/upload-artifact@v3
         with:
-          name: Ghidra-Cpp-Class-Analyzer_${{ matrix.ghidra }}_${{ env.SHORT_SHA }}
-          path: Ghidra-Cpp-Class-Analyzer/dist/bin/*
-
-      - name: Upload Ghidra-Cpp-Class-Analyzer release
-        uses: svenstaro/upload-release-action@1d71c233f746f1dbd928efaf6de63056aa65f6eb
-        if: github.event_name != 'pull_request'
-        with:
-          release_name: Release - ${{ env.SHORT_SHA }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: Ghidra-Cpp-Class-Analyzer/dist/*.zip
-          tag: ${{ env.SHORT_SHA }}
-          overwrite: true
-          file_glob: true
+          path: dist-bin
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Cleanup
         run: rm -rf Ghidra-Cpp-Class-Analyzer
@@ -75,25 +66,28 @@ jobs:
           gradle-version: 6.9
           arguments: buildExtension -PGHIDRA_INSTALL_DIR=${{ env.GHIDRA_INSTALL_DIR }}
 
-      - name: Make artifact single zip 
-        run: |
-          mkdir dist/bin
-          unzip dist/*.zip -d dist/bin
+      - name: Copy artifact
+        run: cp dist/*.zip dist-bin
 
       - name: Upload GhidraOrbis Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: GhidraOrbis_${{ matrix.ghidra }}_${{ env.SHORT_SHA }}
-          path: dist/bin/*
+          path: dist-bin
+          if-no-files-found: error
+          retention-days: 14
 
-      - name: Upload GhidraOrbis Release
-        uses: svenstaro/upload-release-action@1d71c233f746f1dbd928efaf6de63056aa65f6eb
-        if: github.event_name != 'pull_request'
-        with:
-          release_name: Release - ${{ env.SHORT_SHA }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/*.zip
-          tag: ${{ env.SHORT_SHA }}
-          overwrite: true
-          file_glob: true
+  push_release:
+    if: |
+      github.event_name == 'push' &&
+      github.repository == 'astrelsky/GhidraOrbis'
+    needs: build_extensions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create 1.0${{ GITHUB.RUN_NUMBER }} artifact/*.zip --target ${{ GITHUB.SHA }} -t 1.0${{ GITHUB.RUN_NUMBER }}
 
