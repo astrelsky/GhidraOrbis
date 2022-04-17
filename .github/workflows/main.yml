@@ -1,0 +1,97 @@
+name: Build and publish
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build_extensions:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ghidra: ['10.1.1', '10.1.2']
+
+    steps:
+      - name: Checkout GhidraOrbis
+        uses: actions/checkout@v3
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: 11
+          distribution: temurin
+
+      - name: Get short SHA
+        run: echo "SHORT_SHA=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
+
+      - name: Setup Ghidra
+        uses: er28-0652/setup-ghidra@master
+        with:
+          version: ${{ matrix.ghidra }}
+
+      - name: Checkout Ghidra-Cpp-Class-Analyzer
+        uses: actions/checkout@v3
+        with:
+          repository: astrelsky/Ghidra-Cpp-Class-Analyzer
+          path: Ghidra-Cpp-Class-Analyzer
+
+      - name: Build Ghidra-Cpp-Class-Analyzer
+        uses: eskatos/gradle-command-action@v2
+        with:
+          gradle-version: 6.9
+          build-root-directory: Ghidra-Cpp-Class-Analyzer
+          arguments: buildExtension -PGHIDRA_INSTALL_DIR=${{ env.GHIDRA_INSTALL_DIR }}
+
+      - name: Install the class analyzer as an extension forcefully
+        run: |
+           mkdir -p ~/.ghidra/.ghidra_${{ matrix.ghidra }}_PUBLIC/Extensions/
+           unzip Ghidra-Cpp-Class-Analyzer/dist/*.zip -d ~/.ghidra/.ghidra_${{ matrix.ghidra }}_PUBLIC/Extensions/
+
+      - name: Copy artifact
+        run: |
+          mkdir dist-bin
+          cp Ghidra-Cpp-Class-Analyzer/dist/*.zip dist-bin
+
+      - name: Upload Ghidra-Cpp-Class-Analyzer artifact
+        uses: actions/upload-artifact@v3
+        with:
+          path: dist-bin
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Cleanup
+        run: rm -rf Ghidra-Cpp-Class-Analyzer
+
+      - name: Build GhidraOrbis
+        uses: eskatos/gradle-command-action@v2
+        with:
+          gradle-version: 6.9
+          arguments: buildExtension -PGHIDRA_INSTALL_DIR=${{ env.GHIDRA_INSTALL_DIR }}
+
+      - name: Copy artifact
+        run: cp dist/*.zip dist-bin
+
+      - name: Upload GhidraOrbis Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          path: dist-bin
+          if-no-files-found: error
+          retention-days: 14
+
+  push_release:
+    if: |
+      github.event_name == 'push' &&
+      github.repository == 'astrelsky/GhidraOrbis'
+    needs: build_extensions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create 1.0${{ GITHUB.RUN_NUMBER }} artifact/*.zip --target ${{ GITHUB.SHA }} -t 1.0${{ GITHUB.RUN_NUMBER }}
+
