@@ -7,7 +7,6 @@ import ghidra.app.util.Option;
 import ghidra.app.util.bin.ByteProvider;
 import ghidra.app.util.bin.format.elf.*;
 import ghidra.app.util.importer.MessageLog;
-import ghidra.app.util.importer.MessageLogContinuesFactory;
 import ghidra.app.util.opinion.*;
 import ghidra.framework.model.DomainObject;
 import ghidra.program.model.lang.LanguageCompilerSpecPair;
@@ -16,8 +15,6 @@ import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.task.TaskMonitor;
 
-import generic.continues.GenericFactory;
-import generic.continues.RethrowContinuesFactory;
 import orbis.elf.OrbisElfHeader;
 import orbis.elf.OrbisElfProgramBuilder;
 
@@ -76,8 +73,7 @@ public class GhidraOrbisElfLoader extends ElfLoader {
 			throws IOException, CancelledException {
 
 		try {
-			GenericFactory factory = MessageLogContinuesFactory.create(log);
-			OrbisElfHeader elf = OrbisElfHeader.createElfHeader(factory, provider, log::appendMsg);
+			OrbisElfHeader elf = new OrbisElfHeader(provider, log::appendMsg);
 			OrbisElfProgramBuilder.loadElf(elf, program, options, log, monitor);
 			program.getUsrPropertyManager().createVoidPropertyMap("orbis");
 		} catch (DuplicateNameException e) {
@@ -99,9 +95,7 @@ public class GhidraOrbisElfLoader extends ElfLoader {
 
 	private static OrbisElfHeader getElfHeader(ByteProvider provider)
 			throws ElfException, IOException {
-		OrbisElfHeader elfHeader =
-			OrbisElfHeader.createElfHeader(RethrowContinuesFactory.INSTANCE, provider, ElfException::new);
-		return elfHeader;
+		return new OrbisElfHeader(provider, ElfException::new);
 	}
 
 	@Override

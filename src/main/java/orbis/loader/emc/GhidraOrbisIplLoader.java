@@ -12,7 +12,6 @@ import ghidra.app.util.Option;
 import ghidra.app.util.bin.ByteProvider;
 import ghidra.app.util.bin.format.elf.ElfHeader;
 import ghidra.app.util.importer.MessageLog;
-import ghidra.app.util.importer.MessageLogContinuesFactory;
 import ghidra.app.util.opinion.AbstractProgramLoader;
 import ghidra.app.util.opinion.DefaultElfProgramBuilder;
 import ghidra.app.util.opinion.LoadSpec;
@@ -36,7 +35,6 @@ import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
-import generic.continues.GenericFactory;
 import orbis.bin.ipl.EncryptedDataException;
 import orbis.bin.ipl.IplHeader;
 import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
@@ -131,9 +129,8 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 			FileBytes bytes = mem.createFileBytes(
 				program.getName(), 0, header.getHeaderLength(), headerStream, monitor);
 			if (header.isEAP()) {
-				GenericFactory factory = MessageLogContinuesFactory.create(log);
 				ByteProvider bp = header.getBodyProvider(provider.getFSRL());
-				ElfHeader elf = ElfHeader.createElfHeader(factory, bp, log::appendMsg);
+				ElfHeader elf = new ElfHeader(bp, log::appendMsg);
 				DefaultElfProgramBuilder.loadElf(elf, program, options, log, monitor);
 			} else {
 				base = defaultSpace.getAddress(header.getLoadAddress0());

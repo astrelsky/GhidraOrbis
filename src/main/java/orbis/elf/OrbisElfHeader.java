@@ -6,8 +6,8 @@ import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.Consumer;
 
+import ghidra.app.util.bin.BinaryReader;
 import ghidra.app.util.bin.ByteProvider;
-import ghidra.app.util.bin.format.FactoryBundledWithBinaryReader;
 import ghidra.app.util.bin.format.elf.*;
 import ghidra.app.util.bin.format.elf.ElfDynamicType.ElfDynamicValueType;
 import ghidra.app.util.bin.format.elf.ElfRelocationTable.TableFormat;
@@ -18,7 +18,6 @@ import ghidra.util.exception.NotFoundException;
 import org.apache.commons.lang3.ClassUtils;
 import org.apache.commons.lang3.reflect.MethodUtils;
 
-import generic.continues.GenericFactory;
 import utility.function.ExceptionalCallback;
 
 import static orbis.elf.OrbisElfExtension.*;
@@ -35,15 +34,8 @@ public class OrbisElfHeader extends ElfHeader {
     public static final short ET_SCE_DYNAMIC = (short) 0xFE18;
 	public static final short ET_SCE_KERNEL = 2;
 
-	public OrbisElfHeader() {
-		super();
-	}
-
-	public static OrbisElfHeader createElfHeader(GenericFactory factory, ByteProvider provider, Consumer<String> errorConsumer)
-			throws ElfException {
-		OrbisElfHeader elfHeader = (OrbisElfHeader) factory.create(OrbisElfHeader.class);
-		elfHeader.initElfHeader(factory, provider, errorConsumer);
-		return elfHeader;
+	public OrbisElfHeader(ByteProvider provider, Consumer<String> errorConsumer) throws ElfException {
+		super(provider, errorConsumer);
 	}
 
 	@Override
@@ -102,12 +94,12 @@ public class OrbisElfHeader extends ElfHeader {
 	}
 
 	public ElfProgramHeader[] getRawProgramHeaders() throws IOException {
-		FactoryBundledWithBinaryReader reader = getReader();
-		ElfProgramHeader[] programHeaders = new ElfProgramHeader[e_phnum()];
-		for (int i = 0; i < e_phnum(); ++i) {
+		BinaryReader reader = getReader();
+		ElfProgramHeader[] programHeaders = new ElfProgramHeader[getProgramHeaderCount()];
+		for (int i = 0; i < getProgramHeaderCount(); ++i) {
 			long index = e_phoff() + (i * e_phentsize());
 			reader.setPointerIndex(index);
-			programHeaders[i] = DefaultElfProgramHeader.createElfProgramHeader(reader, this);
+			programHeaders[i] = new ElfProgramHeader(reader, this);
 		}
 		return programHeaders;
 	}
@@ -125,14 +117,14 @@ public class OrbisElfHeader extends ElfHeader {
 	}
 
 	private void parseProgramHeaders() throws IOException {
-		FactoryBundledWithBinaryReader reader = getReader();
+		BinaryReader reader = getReader();
 		long fileLength = reader.length();
-		ElfProgramHeader[] programHeaders = new ElfProgramHeader[e_phnum()];
+		ElfProgramHeader[] programHeaders = new ElfProgramHeader[getProgramHeaderCount()];
 		setProgramHeaders(programHeaders);
-		for (int i = 0; i < e_phnum(); ++i) {
+		for (int i = 0; i < getProgramHeaderCount(); ++i) {
 			long index = e_phoff() + (i * e_phentsize());
 			reader.setPointerIndex(index);
-			programHeaders[i] = DefaultElfProgramHeader.createElfProgramHeader(reader, this);
+			programHeaders[i] = new ElfProgramHeader(reader, this);
 		}
 
 		long size = 0;
@@ -185,11 +177,6 @@ public class OrbisElfHeader extends ElfHeader {
 			default:
 				break;
 		}
-	}
-
-	@Override
-	public FactoryBundledWithBinaryReader getReader() {
-		return (FactoryBundledWithBinaryReader) super.getReader();
 	}
 
 	@Override
@@ -273,7 +260,7 @@ public class OrbisElfHeader extends ElfHeader {
 		}
 	}
 
-	private static ElfRelocationTable createElfRelocationTable(FactoryBundledWithBinaryReader reader,
+	private static ElfRelocationTable createElfRelocationTable(BinaryReader reader,
 		ElfHeader header, ElfSectionHeader relocTableSection, long fileOffset, long addrOffset,
 		long length, long entrySize, boolean addendTypeReloc, ElfSymbolTable symbolTable,
 		ElfSectionHeader sectionToBeRelocated, TableFormat format) throws IOException {
@@ -299,8 +286,8 @@ public class OrbisElfHeader extends ElfHeader {
 		if (dynamicHeaders.length == 1) { // no more than one expected
 			ElfProgramHeader prog = dynamicHeaders[0];
 			if (prog != null) {
-				ElfDynamicTable table = ElfDynamicTable.createDynamicTable(
-					getReader(), this, prog.getOffset(), prog.getVirtualAddress());
+				ElfDynamicTable table =
+					new ElfDynamicTable(getReader(), this, prog.getOffset(), prog.getVirtualAddress());
 				for (ElfDynamic dynamic : table.getDynamics()) {
 					if (dynamic.getTagType().valueType == ElfDynamicValueType.ADDRESS) {
 						long value = getDynamicAddrOffset(dynamic.getValue());
@@ -344,7 +331,7 @@ public class OrbisElfHeader extends ElfHeader {
 			if (fileOffset < 0) {
 				return;
 			}
-			ElfStringTable tbl = ElfStringTable.createElfStringTable(getReader(), this, null,
+			ElfStringTable tbl = new ElfStringTable(getReader(), this, null,
 				fileOffset, addrOffset, stringTableSize);
 			setDynamicStringTable(tbl);
 			tables.add(tbl);
@@ -361,7 +348,7 @@ public class OrbisElfHeader extends ElfHeader {
 		if (dynamicTable == null) {
 			return;
 		}
-		FactoryBundledWithBinaryReader reader = getReader();
+		BinaryReader reader = getReader();
 		if (!dynamicTable.containsDynamicValue(DT_SCE_SYMTAB) ||
 			!dynamicTable.containsDynamicValue(DT_SCE_SYMENT) ||
 			!(dynamicTable.containsDynamicValue(DT_SCE_HASH))) {
@@ -397,7 +384,7 @@ public class OrbisElfHeader extends ElfHeader {
 			long tableEntrySize = dynamicTable.getDynamicValue(DT_SCE_SYMENT);
 			long tableSize = dynamicTable.getDynamicValue(DT_SCE_SYMTABSZ);
 
-			ElfSymbolTable tbl = DefaultElfSymbolTable.createElfSymbolTable(
+			ElfSymbolTable tbl = new ElfSymbolTable(
 				reader, this, null, fileOffset, addrOffset,
 				tableSize, tableEntrySize, dynamicStringTable, true);
 			setDynamicSymbolTable(tbl);
