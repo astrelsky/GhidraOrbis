@@ -139,7 +139,10 @@ public class OrbisElfProgramBuilder extends DefaultElfProgramBuilder {
 	private void markupPltGot(TaskMonitor monitor) {
 		MemoryBlock block = getMemory().getBlock(".plt.got");
 		if (block == null) {
-			return;
+			block = getMemory().getBlock(".got.plt");
+			if (block == null) {
+				return;
+			}
 		}
 		Address addr = block.getStart();
 		int size = getProgram().getDefaultPointerSize();

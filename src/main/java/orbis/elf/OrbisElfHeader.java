@@ -15,9 +15,6 @@ import ghidra.util.Msg;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.NotFoundException;
 
-import org.apache.commons.lang3.ClassUtils;
-import org.apache.commons.lang3.reflect.MethodUtils;
-
 import utility.function.ExceptionalCallback;
 
 import static orbis.elf.OrbisElfExtension.*;
@@ -264,7 +261,7 @@ public class OrbisElfHeader extends ElfHeader {
 		ElfHeader header, ElfSectionHeader relocTableSection, long fileOffset, long addrOffset,
 		long length, long entrySize, boolean addendTypeReloc, ElfSymbolTable symbolTable,
 		ElfSectionHeader sectionToBeRelocated, TableFormat format) throws IOException {
-			return invokeStatic(ElfRelocationTable.class, "createElfRelocationTable",
+			return new ElfRelocationTable(
 				reader, header, relocTableSection, fileOffset, addrOffset, length, entrySize,
 				addendTypeReloc, symbolTable, sectionToBeRelocated, format);
 	}
@@ -514,16 +511,6 @@ public class OrbisElfHeader extends ElfHeader {
 		} catch (Exception e) {
 			throw new AssertException(e);
 		}
-	}
-
-	@SuppressWarnings("unchecked")
-	private static <R> R invokeStatic(Class<R> clazz, String method, Object... args) {
-		return invoke(() -> {
-			Class<?>[] types = ClassUtils.toClass(args);
-			Method m = MethodUtils.getMatchingMethod(clazz, method, types);
-			m.setAccessible(true);
-			return (R) m.invoke(null, args);
-		});
 	}
 
 	private static <E extends Exception> void invoke(ExceptionalCallback<E> c) {
