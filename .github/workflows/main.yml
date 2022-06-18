@@ -5,16 +5,29 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  workflow_dispatch:
 
 jobs:
   build_extensions:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        ghidra: ['10.1.3']
+        ghidra: ['latest', '10.1.3']
         gradle-version: ['6.9']
 
     steps:
+      - name: Set Ghidra version
+        id: ghidra_version
+        run: |
+          if [ ${{ matrix.ghidra }} = latest ]; then
+            ghidra_version=$(curl -fLsSo /dev/null -w %{url_effective} https://github.com/NationalSecurityAgency/ghidra/releases/latest |
+             grep -oP '(?<=https://github.com/NationalSecurityAgency/ghidra/releases/tag/Ghidra_).+(?=_build)')
+            echo "::set-output name=full::$ghidra_version"
+          else
+            echo "::set-output name=full::${{ matrix.ghidra }}"
+          fi
+
       - name: Checkout GhidraOrbis
         uses: actions/checkout@v3
       - name: Setup Java
@@ -27,7 +40,7 @@ jobs:
       - name: Setup Ghidra
         uses: er28-0652/setup-ghidra@master
         with:
-          version: ${{ matrix.ghidra }}
+          version: ${{ steps.ghidra_version.outputs.full }}
       - name: Checkout Ghidra-Cpp-Class-Analyzer
         uses: actions/checkout@v3
         with:
@@ -41,8 +54,8 @@ jobs:
           arguments: buildExtension -PGHIDRA_INSTALL_DIR=${{ env.GHIDRA_INSTALL_DIR }}
       - name: Install the class analyzer as an extension forcefully
         run: |
-           mkdir -p ~/.ghidra/.ghidra_${{ matrix.ghidra }}_PUBLIC/Extensions/
-           unzip Ghidra-Cpp-Class-Analyzer/dist/*.zip -d ~/.ghidra/.ghidra_${{ matrix.ghidra }}_PUBLIC/Extensions
+           mkdir -p ~/.ghidra/.ghidra_${{ steps.ghidra_version.outputs.full }}_PUBLIC/Extensions/
+           unzip Ghidra-Cpp-Class-Analyzer/dist/*.zip -d ~/.ghidra/.ghidra_${{ steps.ghidra_version.outputs.full }}_PUBLIC/Extensions
       - name: Upload Ghidra-Cpp-Class-Analyzer artifact
         uses: actions/upload-artifact@v3
         with:
@@ -65,7 +78,7 @@ jobs:
 
   push_release:
     if: |
-      github.event_name == 'push' &&
+      github.event_name != 'pull_request' &&
       github.repository == 'astrelsky/GhidraOrbis'
     needs: build_extensions
     runs-on: ubuntu-latest
