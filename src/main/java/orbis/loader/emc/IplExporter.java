@@ -17,7 +17,6 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.util.PropertyMapManager;
 import ghidra.program.model.util.StringPropertyMap;
-import ghidra.program.model.util.TypeMismatchException;
 import ghidra.program.model.util.VoidPropertyMap;
 import ghidra.util.exception.AssertException;
 import ghidra.util.task.TaskMonitor;
@@ -51,7 +50,7 @@ public class IplExporter extends AbstractLoaderExporter {
                 log.appendMsg("Not an ipl file");
                 return false;
             }
-        } catch (TypeMismatchException e) {
+        } catch (Exception e) {
             log.appendMsg("Not an ipl file");
             return false;
         }
@@ -65,19 +64,11 @@ public class IplExporter extends AbstractLoaderExporter {
         AddressSpace space = program.getAddressFactory().getDefaultAddressSpace();
         StringPropertyMap keys = man.getStringPropertyMap(GhidraOrbisIplLoader.MAP_NAME);
         FileBytes hb = bytes.get(0);
+		FileBytes bb = bytes.get(1);
         bytes = bytes.subList(1, bytes.size());
         byte[] data = new byte[(int) hb.getSize()];
         hb.getModifiedBytes(hb.getSize(), data);
-        long size = bytes.stream()
-            .mapToLong(FileBytes::getSize)
-            .sum();
-
-        // iff this becomes a problem it'll be corrected
-        ByteBuffer body = ByteBuffer.allocate((int) size);
-        bytes.stream()
-            .map(IplExporter::toBuffer)
-            .forEachOrdered(body::put);
-        IplHeader header = new IplHeader(toBuffer(hb), body);
+        IplHeader header = new IplHeader(toBuffer(hb), toBuffer(bb));
         String cipherKey = keys.getString(space.getAddress(0));
         String hasherKey = keys.getString(space.getAddress(1));
         try {

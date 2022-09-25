@@ -17,6 +17,7 @@ public final class SyscallDataType {
 		struct.add(DWordDataType.dataType, "flags", null);
 		struct.add(DWordDataType.dataType, "thrcnt", null);
 		struct.setToMachineAligned();
+		struct.setToDefaultPacking();
 		return struct;
 	}
 }

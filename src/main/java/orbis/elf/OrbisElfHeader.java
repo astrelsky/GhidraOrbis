@@ -286,7 +286,11 @@ public class OrbisElfHeader extends ElfHeader {
 				ElfDynamicTable table =
 					new ElfDynamicTable(getReader(), this, prog.getOffset(), prog.getVirtualAddress());
 				for (ElfDynamic dynamic : table.getDynamics()) {
-					if (dynamic.getTagType().valueType == ElfDynamicValueType.ADDRESS) {
+					ElfDynamicType tagType = dynamic.getTagType();
+					if (tagType == null) {
+						continue;
+					}
+					if (tagType.valueType == ElfDynamicValueType.ADDRESS) {
 						long value = getDynamicAddrOffset(dynamic.getValue());
 						dynamic.setValue(value);
 					}
@@ -328,8 +332,7 @@ public class OrbisElfHeader extends ElfHeader {
 			if (fileOffset < 0) {
 				return;
 			}
-			ElfStringTable tbl = new ElfStringTable(getReader(), this, null,
-				fileOffset, addrOffset, stringTableSize);
+			ElfStringTable tbl = new ElfStringTable(this, null, fileOffset, addrOffset, stringTableSize);
 			setDynamicStringTable(tbl);
 			tables.add(tbl);
 			setStringTables(tables.toArray(ElfStringTable[]::new));
@@ -383,7 +386,7 @@ public class OrbisElfHeader extends ElfHeader {
 
 			ElfSymbolTable tbl = new ElfSymbolTable(
 				reader, this, null, fileOffset, addrOffset,
-				tableSize, tableEntrySize, dynamicStringTable, true);
+				tableSize, tableEntrySize, dynamicStringTable, null, true);
 			setDynamicSymbolTable(tbl);
 			tables.add(tbl);
 			setSymbolTables(tables.toArray(ElfSymbolTable[]::new));

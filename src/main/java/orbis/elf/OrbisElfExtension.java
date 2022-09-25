@@ -147,6 +147,10 @@ public class OrbisElfExtension extends ElfExtension {
 			try {
 				for (ElfDynamic dynamic : table.getDynamics()) {
 					monitor.checkCanceled();
+					ElfDynamicType tagType = dynamic.getTagType();
+					if (tagType == null) {
+						continue;
+					}
 					if (DynamicFragmentBuilder.canHandle(dynamic.getTagType())) {
 						FragmentBuilder builder = new DynamicFragmentBuilder(helper, dynamic);
 						builder.move();

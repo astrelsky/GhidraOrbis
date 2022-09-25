@@ -1,6 +1,7 @@
 package orbis.rtti;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import ghidra.app.cmd.data.rtti.TypeInfo;
@@ -36,7 +37,7 @@ public final class OrbisRttiScaner extends ItaniumAbiRttiScanner {
 	@Override
 	public TypeInfo getTypeInfo(Address address) {
 		Program program = getProgram();
-		Relocation reloc = program.getRelocationTable().getRelocation(address);
+		Relocation reloc = getRelocation(address);
 		if (reloc == null) {
 			return super.getTypeInfo(address);
 		}
@@ -49,8 +50,7 @@ public final class OrbisRttiScaner extends ItaniumAbiRttiScanner {
 
 	@Override
 	public boolean isTypeInfo(Address address) {
-		Program program = getProgram();
-		Relocation reloc = program.getRelocationTable().getRelocation(address);
+		Relocation reloc = getRelocation(address);
 		if (reloc == null) {
 			return super.isTypeInfo(address);
 		}
@@ -59,6 +59,14 @@ public final class OrbisRttiScaner extends ItaniumAbiRttiScanner {
 			return super.isTypeInfo(address);
 		}
 		return true;
+	}
+	
+	private Relocation getRelocation(Address address) {
+		List<Relocation> relocs = getProgram().getRelocationTable().getRelocations(address);
+		if (relocs.isEmpty()) {
+			return null;
+		}
+		return relocs.get(0);
 	}
 
 	private static Map<String, TypeInfoConstructor> getCopyMap() {
