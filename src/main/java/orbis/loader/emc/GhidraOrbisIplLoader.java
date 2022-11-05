@@ -75,7 +75,7 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 	}
 
 	@Override
-	protected List<Program> loadProgram(ByteProvider provider, String programName,
+	protected List<LoadedProgram> loadProgram(ByteProvider provider, String programName,
 			DomainFolder programFolder, LoadSpec loadSpec, List<Option> options, MessageLog log,
 			Object consumer, TaskMonitor monitor) throws IOException, CancelledException {
 		LanguageCompilerSpecPair pair = loadSpec.getLanguageCompilerSpec();
@@ -100,7 +100,7 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 				prog = null;
 			}
 		}
-		return prog != null ? List.of(prog) : Collections.emptyList();
+		return prog != null ? List.of(new LoadedProgram(prog, programFolder)) : Collections.emptyList();
 	}
 
 	@Override
@@ -184,14 +184,13 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 	}
 
 	@Override
-	protected void postLoadProgramFixups(List<Program> loadedPrograms, DomainFolder folder,
-			List<Option> options, MessageLog log, TaskMonitor monitor)
-			throws CancelledException, IOException {
+	protected void postLoadProgramFixups(List<LoadedProgram> loadedPrograms, List<Option> options,
+			MessageLog log, TaskMonitor monitor) throws CancelledException, IOException {
 		if (loadedPrograms.isEmpty()) {
 			return;
 		}
 		DataType dt = IplHeader.dataType;
-		Program program = loadedPrograms.get(0);
+		Program program = loadedPrograms.get(0).program();
 		int id = program.startTransaction("Creating Header");
 		boolean success = false;
 		try {
