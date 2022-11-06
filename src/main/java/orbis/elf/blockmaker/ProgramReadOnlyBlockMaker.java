@@ -33,13 +33,20 @@ public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
 
 	@Override
 	public void makeBlock() throws Exception {
-		ProgramFragment frag = getPltGotFragment();
+		ProgramFragment frag = getGotFragment();
 		Address addr = frag.getMinAddress();
+		Memory mem = getProgram().getMemory();
 		if (addr != null) {
 			monitor.setMessage("Scanning .got.plt");
 			while (frag.contains(addr)) {
 				monitor.checkCanceled();
-				helper.createData(addr, PointerDataType.dataType);
+				long value = mem.getLong(addr);
+				if (value != 0 && value != -1) {
+					Address dest = addr.getNewAddress(value);
+					if (mem.contains(dest)) {
+						helper.createData(addr, PointerDataType.dataType);
+					}
+				}
 				addr = addr.add(Long.BYTES);
 			}
 		}
@@ -50,32 +57,40 @@ public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
 	}
 
 	void createPltGotFragment(Address start) throws Exception {
-		ProgramFragment frag = getPltGotFragment();
 		Program program = getProgram();
 		Memory mem = program.getMemory();
 		Address addr = start;
 		monitor.setMessage("Scanning .got.plt");
 		MemoryBlock block = mem.getBlock(addr);
-		while (block.contains(addr) && mem.getLong(addr) != 0) {
+		while (block.contains(addr)) {
 			monitor.checkCanceled();
-			helper.createData(addr, PointerDataType.dataType);
+			long value = mem.getLong(addr);
+			if (value != 0 && value != -1) {
+				Address dest = addr.getNewAddress(value);
+				if (mem.contains(dest)) {
+					helper.createData(addr, PointerDataType.dataType);
+				}
+			}
 			addr = addr.add(Long.BYTES);
 		}
 		if (!block.contains(addr)) {
 			addr = block.getEnd();
 		}
-		frag.move(start, addr);
 	}
 
 	private Address createTrampolines() throws Exception {
+		if (getGotFragment() == null) {
+			// not global object table, no trampolines
+			return null;
+		}
 		Program program = getProgram();
 		Listing listing = program.getListing();
 		monitor.setMessage("Finding trampolines");
 		JumpSearcher searcher = new JumpSearcher(program, monitor);
 		ProgramFragment frag = getPltGotFragment();
-		if (frag.getMinAddress() == null) {
+		if (frag == null || frag.getMinAddress() == null) {
 			SymbolTable st = program.getSymbolTable();
-			List<Symbol> syms = st.getGlobalSymbols("_DT_FINI");
+			List<Symbol> syms = st.getGlobalSymbols("__DT_FINI");
 			if (syms.size() != 1) {
 				return null;
 			}
@@ -84,14 +99,15 @@ public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
 		while (searcher.getNextAddress() != null) {
 			monitor.checkCanceled();
 			Address addr = searcher.getTarget();
-			if (frag.getMinAddress() == null) {
+			if (frag == null || frag.getMinAddress() == null) {
 				createPltGotFragment(addr);
 			}
 			if (frag.contains(addr)) {
 				break;
 			}
 		}
-		Address start = searcher.getAddress();
+		frag = getGotFragment();
+		//Address start = searcher.getAddress();
 		monitor.setMessage("Creating tampolines");
 		while (searcher.isJump() && frag.contains(searcher.getTarget())) {
 			Function fun =
@@ -104,15 +120,21 @@ public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
 			}
 			searcher.setAddress(searcher.getAddress().add(0x10));
 		}
-		frag = getFragment(".plt");
 		Address end = searcher.getAddress();
+		/*
+		frag = getFragment(".plt");
 		if (end == null || frag == null || end.previous() == null) {
 			return null;
 		}
 		frag.move(start, end.previous());
+		*/
 		return end;
 	}
 
+	private ProgramFragment getGotFragment() throws Exception {
+		return getFragment(".got");
+	}
+	
 	private ProgramFragment getPltGotFragment() throws Exception {
 		return getFragment(".got.plt");
 	}

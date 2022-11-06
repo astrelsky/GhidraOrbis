@@ -191,6 +191,12 @@ public class OrbisElfHeader extends ElfHeader {
 
 		// Order of parsing and processing dynamic relocation tables can be important to ensure that
 		// GOT/PLT relocations are applied late.
+		
+		ElfDynamicTable dynamicTable = getDynamicTable();
+		if (!dynamicTable.containsDynamicValue(DT_SCE_RELA)) {
+			invoke("parseRelocationTables");
+			return;
+		}
 
 		parseDynamicRelocTable(
 			relocationTableList, DT_SCE_RELA, DT_SCE_RELAENT, DT_SCE_RELASZ, true);
@@ -308,7 +314,7 @@ public class OrbisElfHeader extends ElfHeader {
 			return;
 		}
 		if (!dynamicTable.containsDynamicValue(DT_SCE_STRSZ)) {
-			Msg.warn(this, "Failed to parse DT_SCE_STRSZ, missing dynamic dependency");
+			invoke("parseStringTables");
 			return;
 		}
 
@@ -353,7 +359,11 @@ public class OrbisElfHeader extends ElfHeader {
 			!dynamicTable.containsDynamicValue(DT_SCE_SYMENT) ||
 			!(dynamicTable.containsDynamicValue(DT_SCE_HASH))) {
 			if (dynamicStringTable != null) {
-				Msg.warn(this, "Failed to parse DT_SYMTAB, missing dynamic dependency");
+				//Msg.warn(this, "Failed to parse DT_SYMTAB, missing dynamic dependency");
+				ElfSymbolTable dynamicSymbolTable = invoke("parseDynamicSymbolTable");
+				setDynamicSymbolTable(dynamicSymbolTable);
+				tables.add(dynamicSymbolTable);
+				setSymbolTables(tables.toArray(ElfSymbolTable[]::new));
 			}
 			return;
 		}

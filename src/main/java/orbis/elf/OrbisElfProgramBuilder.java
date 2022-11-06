@@ -251,26 +251,6 @@ public class OrbisElfProgramBuilder extends DefaultElfProgramBuilder {
 		}
 	}
 
-	public void splitConflictFragments(TaskMonitor monitor) throws CancelledException {
-		try {
-			for (ElfProgramHeader phdr : conflicts) {
-				monitor.checkCanceled();
-				String name = getProgramHeaderName(phdr, 0);
-				Address start = getSegmentLoadAddress(phdr);
-				createInitializedBlock(
-					phdr, false, name, start, phdr.getOffset(),
-					phdr.getAdjustedLoadSize(), getComment(phdr),
-					phdr.isRead(), phdr.isWrite(), phdr.isExecute(),
-					monitor);
-			}
-		} catch (CancelledException e) {
-			throw e;
-		} catch (Exception e) {
-			log(e);
-			e.printStackTrace();
-		}
-	}
-
 	private String getComment(ElfProgramHeader phdr) {
 		Address address = getSegmentLoadAddress(phdr);
 		AddressSpace space = address.getAddressSpace();

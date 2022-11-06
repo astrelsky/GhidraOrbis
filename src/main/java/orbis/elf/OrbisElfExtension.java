@@ -173,7 +173,11 @@ public class OrbisElfExtension extends ElfExtension {
 					if (ProgramHeaderFragmentBuilder.canHandle(phdr)) {
 						FragmentBuilder builder =
 							new ProgramHeaderFragmentBuilder(helper, phdr, i++);
-						builder.move();
+						try {
+							builder.move();
+						} catch (Exception e) {
+							helper.getLog().appendException(e);
+						}
 					}
 				}
 				fixEhFrame(helper, monitor);
@@ -377,8 +381,10 @@ public class OrbisElfExtension extends ElfExtension {
 				Address addr = helper.getDefaultAddress(phdr.getVirtualAddress());
 				Memory mem = program.getMemory();
 				MemoryBlock block = mem.getBlock(addr);
-				mem.split(block, addr);
-				block = mem.getBlock(addr);
+				if (!addr.equals(block.getStart())) {
+					mem.split(block, addr);
+					block = mem.getBlock(addr);
+				}
 				block.setName(EH_FRAME_HDR);
 				Listing listing = program.getListing();
 				ProgramModule root = listing.getDefaultRootModule();
