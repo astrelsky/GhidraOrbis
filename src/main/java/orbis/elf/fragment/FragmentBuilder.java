@@ -6,8 +6,6 @@ import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
 
-import orbis.elf.OrbisElfHeader;
-
 public abstract class FragmentBuilder {
 
 	private final ElfLoadHelper helper;
@@ -26,7 +24,7 @@ public abstract class FragmentBuilder {
 
 	protected abstract String getName();
 
-	public final void move() throws Exception {
+	public void move() throws Exception {
 		Program program = helper.getProgram();
 		Address start = getStart();
 		if (start == null) {
@@ -40,38 +38,39 @@ public abstract class FragmentBuilder {
 		if (name.isBlank()) {
 			return;
 		}
-		OrbisElfHeader elf = (OrbisElfHeader) helper.getElfHeader();
-		Listing listing = program.getListing();
-		ProgramModule root = listing.getDefaultRootModule();
+		
 		Address end = start.add(size);
-		if (elf.isKernel()) {
-			Memory mem = program.getMemory();
-			MemoryBlock block = mem.getBlock(start);
-			if (!start.equals(block.getStart())) {
-				mem.split(block, start);
-				block = mem.getBlock(start);
-			}
-			if (!end.equals(block.getEnd()) && block.contains(end)) {
-				if (end.equals(start)) {
-					return;
-				}
-				mem.split(block, end);
-				block = mem.getBlock(start);
-			}
-			MemoryBlock conflictBlock = mem.getBlock(name);
-			if (conflictBlock != null && !conflictBlock.equals(block)) {
-				conflictBlock.setName(name+"_old");
-			}
-			block.setName(name);
-			if (name.equals(".text")) {
+		Memory mem = program.getMemory();
+		MemoryBlock block = mem.getBlock(start);
+		if (block == null) {
+			return;
+		}
+		if (!start.equals(block.getStart())) {
+			mem.split(block, start);
+			block = mem.getBlock(start);
+		}
+		if (!end.equals(block.getEnd()) && block.contains(end)) {
+			if (end.equals(start)) {
 				return;
 			}
+			mem.split(block, end);
+			block = mem.getBlock(start);
 		}
+		MemoryBlock conflictBlock = mem.getBlock(name);
+		if (conflictBlock != null && !conflictBlock.equals(block)) {
+			conflictBlock.setName(name+"_old");
+		}
+		block.setName(name);
+		if (name.equals(".text")) {
+			return;
+		}
+		Listing listing = program.getListing();
+		ProgramModule root = listing.getDefaultRootModule();
 		ProgramFragment frag = listing.getFragment(root.getTreeName(), name);
 		if (frag != null) {
 			return;
 		}
-		frag = root.createFragment(name);
-		frag.move(start, end);
+			frag = root.createFragment(name);
+			frag.move(block.getStart(), block.getEnd().subtract(1));
 	}
 }

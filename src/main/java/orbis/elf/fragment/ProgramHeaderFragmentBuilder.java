@@ -39,7 +39,7 @@ public final class ProgramHeaderFragmentBuilder extends FragmentBuilder {
 	public static boolean canHandle(ElfProgramHeader phdr) {
 		switch (phdr.getType()) {
 			case ElfProgramHeaderConstants.PT_GNU_EH_FRAME:
-			case ElfProgramHeaderConstants.PT_DYNAMIC:
+			//case ElfProgramHeaderConstants.PT_DYNAMIC:
 				return false;
 			default:
 				return true;
@@ -57,6 +57,7 @@ public final class ProgramHeaderFragmentBuilder extends FragmentBuilder {
 				}
 				return ".rodata";
 			case PT_SCE_RELRO_VALUE:
+			case PT_GNU_RELRO:
 				return ".data.rel.ro";
 			case PT_DYNAMIC:
 				return ".dynamic";

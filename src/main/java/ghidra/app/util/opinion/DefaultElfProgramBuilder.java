@@ -216,7 +216,7 @@ public class DefaultElfProgramBuilder extends ElfProgramBuilder {
 	}
 
 	protected void processGNU_readOnly(TaskMonitor monitor) {
-		invoke("processGNU_readOnly", monitor);
+		invoke("adjustReadOnlyMemoryRegions", monitor);
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////

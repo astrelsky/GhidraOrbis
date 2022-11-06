@@ -28,11 +28,7 @@ public abstract class ReadOnlyBlockMaker {
 	protected ProgramFragment getFragment(String name) throws Exception {
 		Listing listing = getProgram().getListing();
 		ProgramModule root = listing.getDefaultRootModule();
-		ProgramFragment frag = listing.getFragment(root.getTreeName(), name);
-		if (frag == null) {
-			frag = root.createFragment(name);
-		}
-		return frag;
+		return listing.getFragment(root.getTreeName(), name);
 	}
 
 	protected void createReadOnlyBlock(Address addr) throws Exception {
@@ -45,6 +41,11 @@ public abstract class ReadOnlyBlockMaker {
 		block.setExecute(false);
 		block.setWrite(false);
 		ProgramFragment frag = getFragment(RO_DATA_BLOCK_NAME);
+		if (frag == null) {
+			Listing listing = getProgram().getListing();
+			ProgramModule root = listing.getDefaultRootModule();
+			frag = root.createFragment(RO_DATA_BLOCK_NAME);
+		}
 		frag.move(block.getStart(), block.getEnd());
 	}
 }
