@@ -14,10 +14,12 @@ import ghidra.app.util.bin.format.elf.ElfHeader;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.app.util.opinion.AbstractProgramLoader;
 import ghidra.app.util.opinion.DefaultElfProgramBuilder;
+import ghidra.app.util.opinion.LoadException;
 import ghidra.app.util.opinion.LoadSpec;
+import ghidra.app.util.opinion.Loaded;
 import ghidra.app.util.opinion.LoaderTier;
-import ghidra.framework.model.DomainFolder;
 import ghidra.framework.model.DomainObject;
+import ghidra.framework.model.Project;
 import ghidra.program.database.mem.FileBytes;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSpace;
@@ -30,8 +32,6 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.util.StringPropertyMap;
-import ghidra.util.Msg;
-import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
@@ -75,48 +75,48 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 	}
 
 	@Override
-	protected List<Program> loadProgram(ByteProvider provider, String programName,
-			DomainFolder programFolder, LoadSpec loadSpec, List<Option> options, MessageLog log,
-			Object consumer, TaskMonitor monitor) throws IOException, CancelledException {
+	protected List<Loaded<Program>> loadProgram(ByteProvider provider, String loadedName,
+			Project project, String projectFolderPath, LoadSpec loadSpec, List<Option> options,
+			MessageLog log, Object consumer, TaskMonitor monitor)
+			throws IOException, CancelledException, LoadException {
 		LanguageCompilerSpecPair pair = loadSpec.getLanguageCompilerSpec();
 		Language importerLanguage = getLanguageService().getLanguage(pair.languageID);
 		CompilerSpec importerCompilerSpec =
 			importerLanguage.getCompilerSpecByID(pair.compilerSpecID);
 		AddressSpace defaultSpace = importerLanguage.getAddressFactory().getDefaultAddressSpace();
 		Address baseAddr = defaultSpace.getAddress(0);
-		Program prog = createProgram(provider, programName, baseAddr, getName(), importerLanguage,
+		Program prog = createProgram(provider, loadedName, baseAddr, getName(), importerLanguage,
 			importerCompilerSpec, consumer);
 		boolean success = false;
 		try {
-			success = loadInto(provider, loadSpec, options, log, prog, monitor);
-			if (success) {
-				createDefaultMemoryBlocks(prog, importerLanguage, log);
-			}
+			loadProgramInto(provider, loadSpec, options, log, prog, monitor);
+		} catch (LoadException e) {
+			throw e;
 		} catch (Exception e) {
-			throw new AssertException(e);
+			throw new LoadException(e);
 		} finally {
 			if (!success) {
 				prog.release(consumer);
 				prog = null;
 			}
 		}
-		return prog != null ? List.of(prog) : Collections.emptyList();
+		if (prog != null) {
+			return List.of(new Loaded<>(prog, loadedName, projectFolderPath));
+		}
+		return Collections.emptyList();
 	}
 
 	@Override
-	protected boolean loadProgramInto(ByteProvider provider, LoadSpec loadSpec,
+	protected void loadProgramInto(ByteProvider provider, LoadSpec loadSpec,
 			List<Option> options, MessageLog log, Program program, TaskMonitor monitor)
-			throws IOException, CancelledException {
-		boolean success = false;
+			throws IOException, CancelledException, LoadException {
 		IplHeader header = new IplHeader(provider);
 		try {
 			header.decrypt(getKey(options, CIPHER_KEY), getKey(options, HASHER_KEY));
 		} catch (EncryptedDataException e) {
-			Msg.showInfo(this, null, "Import Failed", e.getMessage());
-			return false;
+			throw new LoadException(e.getMessage());
 		} catch (Exception e) {
-			log.appendException(e);
-			return false;
+			throw new LoadException(e);
 		}
 		InputStream headerStream = null;
 		InputStream bodyStream = null;
@@ -149,10 +149,8 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 			block.setExecute(false);
 			program.getDataTypeManager().resolve(header.toDataType(), KEEP_HANDLER);
 			program.getUsrPropertyManager().createVoidPropertyMap(IPL_PROPERTY_NAME);
-			success = true;
 		} catch (Exception e) {
-			log.appendException(e);
-			e.printStackTrace();
+			throw new LoadException(e);
 		} finally {
 			if (headerStream != null) {
 				headerStream.close();
@@ -161,7 +159,6 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 				bodyStream.close();
 			}
 		}
-		return success;
 	}
 
 	@Override
@@ -184,14 +181,14 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 	}
 
 	@Override
-	protected void postLoadProgramFixups(List<Program> loadedPrograms, DomainFolder folder,
+	protected void postLoadProgramFixups(List<Loaded<Program>> loadedPrograms, Project project,
 			List<Option> options, MessageLog log, TaskMonitor monitor)
 			throws CancelledException, IOException {
 		if (loadedPrograms.isEmpty()) {
 			return;
 		}
 		DataType dt = IplHeader.dataType;
-		Program program = loadedPrograms.get(0);
+		Program program = loadedPrograms.get(0).getDomainObject();
 		int id = program.startTransaction("Creating Header");
 		boolean success = false;
 		try {

@@ -127,8 +127,8 @@ public class OrbisElfHeader extends ElfHeader {
 		long size = 0;
 		for (ElfProgramHeader phdr : programHeaders) {
 			if (isKernel()) {
-				long memSize = phdr.getMemorySize();
-				phdr.setSize(memSize, memSize);
+				//long memSize = phdr.getMemorySize();
+				//phdr.setSize(memSize, memSize);
 				if (!phdr.isExecute()) {
 					fixupProgramHeader(phdr);
 				}
@@ -139,9 +139,19 @@ public class OrbisElfHeader extends ElfHeader {
 			// adjust program section file offset to be based on relative read offset
 			long relOffset = 0;
 			for (ElfProgramHeader pheader : programHeaders) {
-				pheader.setOffset(relOffset);
+				setOffset(pheader, relOffset);
 				relOffset += pheader.getFileSize();
 			}
+		}
+	}
+
+	private void setOffset(ElfProgramHeader phdr, long offset) {
+		try {
+			Field f = ElfProgramHeader.class.getDeclaredField("p_offset");
+			f.setAccessible(true);
+			f.setLong(phdr, offset);
+		} catch (Throwable t) {
+			Msg.error(this, t);
 		}
 	}
 
@@ -169,7 +179,7 @@ public class OrbisElfHeader extends ElfHeader {
 			case ElfProgramHeaderConstants.PT_DYNAMIC:
 				ElfProgramHeader text = getTextSegment();
 				if (text.getVirtualAddress() != KERNEL_BASE) {
-					phdr.setOffset(vaddr - text.getVirtualAddress());
+					setOffset(phdr, vaddr - text.getVirtualAddress());
 				}
 			default:
 				break;
@@ -191,6 +201,12 @@ public class OrbisElfHeader extends ElfHeader {
 
 		// Order of parsing and processing dynamic relocation tables can be important to ensure that
 		// GOT/PLT relocations are applied late.
+
+		ElfDynamicTable dynamicTable = getDynamicTable();
+		if (!dynamicTable.containsDynamicValue(DT_SCE_RELA)) {
+			invoke("parseRelocationTables");
+			return;
+		}
 
 		parseDynamicRelocTable(
 			relocationTableList, DT_SCE_RELA, DT_SCE_RELAENT, DT_SCE_RELASZ, true);
@@ -292,11 +308,21 @@ public class OrbisElfHeader extends ElfHeader {
 					}
 					if (tagType.valueType == ElfDynamicValueType.ADDRESS) {
 						long value = getDynamicAddrOffset(dynamic.getValue());
-						dynamic.setValue(value);
+						setValue(dynamic, value);
 					}
 				}
 				setDynamicTable(table);
 			}
+		}
+	}
+
+	private void setValue(ElfDynamic dynamic, long value) {
+		try {
+			Field f = ElfDynamic.class.getDeclaredField("d_val");
+			f.setAccessible(true);
+			f.setLong(dynamic, value);
+		} catch (Throwable t) {
+			Msg.error(this, t);
 		}
 	}
 
@@ -308,7 +334,7 @@ public class OrbisElfHeader extends ElfHeader {
 			return;
 		}
 		if (!dynamicTable.containsDynamicValue(DT_SCE_STRSZ)) {
-			Msg.warn(this, "Failed to parse DT_SCE_STRSZ, missing dynamic dependency");
+			invoke("parseStringTables");
 			return;
 		}
 
@@ -353,7 +379,11 @@ public class OrbisElfHeader extends ElfHeader {
 			!dynamicTable.containsDynamicValue(DT_SCE_SYMENT) ||
 			!(dynamicTable.containsDynamicValue(DT_SCE_HASH))) {
 			if (dynamicStringTable != null) {
-				Msg.warn(this, "Failed to parse DT_SYMTAB, missing dynamic dependency");
+				//Msg.warn(this, "Failed to parse DT_SYMTAB, missing dynamic dependency");
+				ElfSymbolTable dynamicSymbolTable = invoke("parseDynamicSymbolTable");
+				setDynamicSymbolTable(dynamicSymbolTable);
+				tables.add(dynamicSymbolTable);
+				setSymbolTables(tables.toArray(ElfSymbolTable[]::new));
 			}
 			return;
 		}

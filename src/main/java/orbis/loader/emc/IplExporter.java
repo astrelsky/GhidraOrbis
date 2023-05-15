@@ -5,9 +5,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 
-import ghidra.app.util.exporter.AbstractLoaderExporter;
+import ghidra.app.util.DomainObjectService;
+import ghidra.app.util.Option;
+import ghidra.app.util.OptionException;
+import ghidra.app.util.exporter.Exporter;
 import ghidra.app.util.exporter.ExporterException;
 import ghidra.framework.model.DomainObject;
 import ghidra.program.database.mem.FileBytes;
@@ -23,15 +27,10 @@ import ghidra.util.task.TaskMonitor;
 
 import orbis.bin.ipl.IplHeader;
 
-public class IplExporter extends AbstractLoaderExporter {
+public class IplExporter extends Exporter {
 
     public IplExporter() {
-        super("IplExporter", null);
-    }
-
-    @Override
-    protected boolean supportsFileFormat(String fileFormat) {
-        return fileFormat.equals("");
+        super("IplExporter", "", null);
     }
 
     @Override
@@ -101,5 +100,14 @@ public class IplExporter extends AbstractLoaderExporter {
             throw new AssertException(e);
         }
     }
+
+	@Override
+	public List<Option> getOptions(DomainObjectService domainObjectService) {
+		return Collections.emptyList();
+	}
+
+	@Override
+	public void setOptions(List<Option> options) throws OptionException {
+	}
 
 }
