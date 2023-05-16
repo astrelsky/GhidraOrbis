@@ -188,7 +188,9 @@ public class DefaultElfProgramBuilder extends ElfProgramBuilder {
 	}
 
 	protected void processSymbolTables(TaskMonitor monitor) {
-		invoke("processSymbolTables", monitor);
+		try {
+			invoke("processSymbolTables", monitor);
+		} catch (Throwable t) {}
 	}
 
 	protected void processRelocations(TaskMonitor monitor) {
@@ -216,7 +218,7 @@ public class DefaultElfProgramBuilder extends ElfProgramBuilder {
 	}
 
 	protected void processGNU_readOnly(TaskMonitor monitor) {
-		invoke("processGNU_readOnly", monitor);
+		invoke("adjustReadOnlyMemoryRegions", monitor);
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////
@@ -301,6 +303,7 @@ public class DefaultElfProgramBuilder extends ElfProgramBuilder {
 		try {
 			return s.get();
 		} catch (Exception e) {
+			e.printStackTrace();
 			throw new AssertException("This should never occur", e);
 		}
 	}
