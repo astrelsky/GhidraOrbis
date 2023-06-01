@@ -444,3 +444,8 @@
 670 sys_aio_init
 671 sys_get_page_table_stats
 672 sys_dynlib_get_list_for_libdbg
+673 sys_blockpool_move
+674 sys_virtual_query_all
+675 sys_reserve_2mb_page
+676 sys_cpumode_yield
+677 sys_get_phys_page_size
