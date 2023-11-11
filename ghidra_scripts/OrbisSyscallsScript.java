@@ -198,14 +198,23 @@ public class OrbisSyscallsScript extends GhidraScript {
 	}
 
 	//TODO: better error checking!
-	private Map<Long, String> getSyscallNumberMap() {
+	private Map<Long, String> getSyscallNumberMap() throws CancelledException {
 		Map<Long, String> syscallMap = new HashMap<>();
-		ResourceFile rFile = Application.findDataFileInAnyModule(syscallFileName);
-		if (rFile == null) {
-			popup("Error opening syscall number file, using default names");
-			return syscallMap;
+		
+		boolean useStandard = askYesNo("Syscall file", "Use standard syscall names?");
+		File file = null;
+		if(useStandard) {
+			ResourceFile rFile = Application.findDataFileInAnyModule(syscallFileName);
+			if (rFile == null) {
+				popup("Error opening syscall number file, using default names");
+				return syscallMap;
+			}
+			file = rFile.getFile(false);
+		} else {
+			file = askFile("Select syscall dump", "Open");
 		}
-		try (FileReader fReader = new FileReader(rFile.getFile(false));
+
+		try (FileReader fReader = new FileReader(file);
 				BufferedReader bReader = new BufferedReader(fReader)) {
 			String line = null;
 			while ((line = bReader.readLine()) != null) {

@@ -44,7 +44,7 @@ public final class OrbisSyscallDumperScript extends GhidraScript {
 				monitor.checkCancelled();
 				Function syscall = getFunction(data.getComponent(i));
 				if (syscall != null && !syscall.equals(dummy)) {
-					writer.write(String.format("%d sys_%s\n", i, syscall.getName()));
+					writer.write(String.format("%d %s\n", i, syscall.getName()));
 				}
 				monitor.incrementProgress(1);
 			}
