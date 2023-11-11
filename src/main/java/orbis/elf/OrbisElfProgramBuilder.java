@@ -214,7 +214,7 @@ public class OrbisElfProgramBuilder extends DefaultElfProgramBuilder {
 
 		ElfProgramHeader[] elfProgramHeaders = elf.getProgramHeaders();
 		for (int i = 0; i < elfProgramHeaders.length; ++i) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			ElfProgramHeader elfProgramHeader = elfProgramHeaders[i];
 			if (elfProgramHeader.getType() == ElfProgramHeaderConstants.PT_NULL) {
 				continue;
@@ -254,7 +254,7 @@ public class OrbisElfProgramBuilder extends DefaultElfProgramBuilder {
 	public void splitConflictFragments(TaskMonitor monitor) throws CancelledException {
 		try {
 			for (ElfProgramHeader phdr : conflicts) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				String name = getProgramHeaderName(phdr, 0);
 				Address start = getSegmentLoadAddress(phdr);
 				createInitializedBlock(

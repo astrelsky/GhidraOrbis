@@ -100,7 +100,7 @@ public abstract class AbstractFileSystem<T extends FileInfoProvider> implements 
 	public final void mount(TaskMonitor monitor) throws IOException, CancelledException {
 		FileSystemHeader<T> header = getHeader();
 		for (T entry : header) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			storeFile(entry);
 		}
 	}

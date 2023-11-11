@@ -38,7 +38,7 @@ public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
 		if (addr != null) {
 			monitor.setMessage("Scanning .got.plt");
 			while (frag.contains(addr)) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				helper.createData(addr, PointerDataType.dataType);
 				addr = addr.add(Long.BYTES);
 			}
@@ -57,7 +57,7 @@ public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
 		monitor.setMessage("Scanning .got.plt");
 		MemoryBlock block = mem.getBlock(addr);
 		while (block.contains(addr) && mem.getLong(addr) != 0) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			helper.createData(addr, PointerDataType.dataType);
 			addr = addr.add(Long.BYTES);
 		}
@@ -82,7 +82,7 @@ public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
 			searcher.setAddress(syms.get(0).getAddress());
 		}
 		while (searcher.getNextAddress() != null) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			Address addr = searcher.getTarget();
 			if (frag.getMinAddress() == null) {
 				createPltGotFragment(addr);

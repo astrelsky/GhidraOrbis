@@ -10,8 +10,8 @@ import ghidra.app.util.importer.MessageLog;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.address.AddressSetView;
-import ghidra.program.model.data.GenericCallingConvention;
 import ghidra.program.model.data.VoidDataType;
+import ghidra.program.model.lang.CompilerSpec;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionManager;
 import ghidra.program.model.listing.Program;
@@ -79,7 +79,7 @@ public class StackChkFailAnalyzer extends AbstractKernelAnalyzer {
 			}
 			function.setName(FUNCTION_NAME, SourceType.IMPORTED);
 			function.setReturnType(VoidDataType.dataType, SourceType.IMPORTED);
-			function.setCallingConvention(GenericCallingConvention.stdcall.getDeclarationName());
+			function.setCallingConvention(CompilerSpec.CALLING_CONVENTION_stdcall);
 			function.setNoReturn(true);
 			return true;
 		} catch (Exception e) {
