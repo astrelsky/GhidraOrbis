@@ -43,16 +43,31 @@ public final class SyscallAnalyzer extends AbstractKernelAnalyzer {
 		Collection<Address> magicAddresses =
 			ProgramMemoryUtil.findString(MAGIC_STRING, program, blocks, set, monitor);
 		if (magicAddresses.size() != 1) {
+			log.appendMsg("Failed to magic string offset(1)");
 			return false;
 		}
 		int ptrSize = program.getDefaultPointerSize();
 		magicAddresses = ProgramMemoryUtil.findDirectReferences(
 			program, blocks, ptrSize, magicAddresses.iterator().next(), monitor);
-		if (magicAddresses.size() != 1) {
+
+		// find first in non-executable memory
+		Address addr = null;
+		for (Address a : magicAddresses) {
+			MemoryBlock blk = program.getMemory().getBlock(a);
+			if (blk == null || blk.isExecute()) {
+				continue;
+			}
+			addr = a;
+			break;
+		}
+
+		if(addr == null) {
+			log.appendMsg("Failed to find offset(2)");
 			return false;
 		}
+
 		try {
-			Address sysvec  = magicAddresses.iterator().next().subtract(0x60);
+			Address sysvec  = addr.subtract(0x60);
 			Address sysent = getAbsoluteAddress(program, sysvec.add(ptrSize));
 			Address sysnames = getAbsoluteAddress(program, sysvec.add(0xD0));
 			table.createLabel(sysvec, "sysentvec", null, SourceType.ANALYSIS);

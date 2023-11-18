@@ -82,7 +82,7 @@ public class DefaultElfProgramBuilder extends ElfProgramBuilder {
 		Memory memory = getMemory();
 		ElfProgramHeader[] elfProgramHeaders = elf.getProgramHeaders();
 		for (int i = 0; i < elfProgramHeaders.length; ++i) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			ElfProgramHeader elfProgramHeader = elfProgramHeaders[i];
 			if (elfProgramHeaders[i].getType() == ElfProgramHeaderConstants.PT_LOAD) {
 

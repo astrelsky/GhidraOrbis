@@ -44,7 +44,7 @@ public class NIDAnalyzer extends AbstractAnalyzer {
 			for (Symbol s : table.getAllSymbols(false)) {
 				// remaining symbols are data but the library namespace
 				// cannot be added for some reason
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				if (s.isPrimary() && s.getName().contains("#")) {
 					resolver.resolve(s);
 				}

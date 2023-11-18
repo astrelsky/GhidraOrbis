@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ghidra: ['10.1.1', '10.1.2']
+        ghidra: ['10.3.3']
 
     steps:
       - name: Checkout GhidraOrbis
@@ -20,7 +20,7 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
-          java-version: 11
+          java-version: 17
           distribution: temurin
 
       - name: Get short SHA
@@ -31,43 +31,10 @@ jobs:
         with:
           version: ${{ matrix.ghidra }}
 
-      - name: Checkout Ghidra-Cpp-Class-Analyzer
-        uses: actions/checkout@v3
-        with:
-          repository: astrelsky/Ghidra-Cpp-Class-Analyzer
-          path: Ghidra-Cpp-Class-Analyzer
-
-      - name: Build Ghidra-Cpp-Class-Analyzer
-        uses: eskatos/gradle-command-action@v2
-        with:
-          gradle-version: 6.9
-          build-root-directory: Ghidra-Cpp-Class-Analyzer
-          arguments: buildExtension -PGHIDRA_INSTALL_DIR=${{ env.GHIDRA_INSTALL_DIR }}
-
-      - name: Install the class analyzer as an extension forcefully
-        run: |
-           mkdir -p ~/.ghidra/.ghidra_${{ matrix.ghidra }}_PUBLIC/Extensions/
-           unzip Ghidra-Cpp-Class-Analyzer/dist/*.zip -d ~/.ghidra/.ghidra_${{ matrix.ghidra }}_PUBLIC/Extensions/
-
-      - name: Copy artifact
-        run: |
-          mkdir dist-bin
-          cp Ghidra-Cpp-Class-Analyzer/dist/*.zip dist-bin
-
-      - name: Upload Ghidra-Cpp-Class-Analyzer artifact
-        uses: actions/upload-artifact@v3
-        with:
-          path: dist-bin
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Cleanup
-        run: rm -rf Ghidra-Cpp-Class-Analyzer
-
       - name: Build GhidraOrbis
         uses: eskatos/gradle-command-action@v2
         with:
-          gradle-version: 6.9
+          gradle-version: 8.3
           arguments: buildExtension -PGHIDRA_INSTALL_DIR=${{ env.GHIDRA_INSTALL_DIR }}
 
       - name: Copy artifact

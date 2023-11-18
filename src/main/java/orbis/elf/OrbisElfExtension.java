@@ -146,7 +146,7 @@ public class OrbisElfExtension extends ElfExtension {
 		if (table != null) {
 			try {
 				for (ElfDynamic dynamic : table.getDynamics()) {
-					monitor.checkCanceled();
+					monitor.checkCancelled();
 					ElfDynamicType tagType = dynamic.getTagType();
 					if (tagType == null) {
 						continue;
@@ -169,7 +169,7 @@ public class OrbisElfExtension extends ElfExtension {
 			if (elf.getSections().length == 0) {
 				int i = 0;
 				for (ElfProgramHeader phdr : elf.getProgramHeaders()) {
-					monitor.checkCanceled();
+					monitor.checkCancelled();
 					if (ProgramHeaderFragmentBuilder.canHandle(phdr)) {
 						FragmentBuilder builder =
 							new ProgramHeaderFragmentBuilder(helper, phdr, i++);
@@ -234,7 +234,7 @@ public class OrbisElfExtension extends ElfExtension {
 		Program program = helper.getProgram();
 		SymbolTable symTable = program.getSymbolTable();
 		for (ElfDynamic dynamic : table.getDynamics()) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			String symbolName = "__"+dynamic.getTagAsString();
 			List<Symbol> symbols = symTable.getGlobalSymbols(symbolName);
 			if (symbols.size() == 1) {
@@ -281,7 +281,7 @@ public class OrbisElfExtension extends ElfExtension {
 			return;
 		}
 		for (Data data : listing.getDefinedData(true)) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			if (data.getDataType().getName().equals("Elf64_Ehdr")) {
 				Memory mem = program.getMemory();
 				MemoryBlock block = mem.getBlock(data.getAddress());
@@ -308,7 +308,7 @@ public class OrbisElfExtension extends ElfExtension {
 		ElfStringTable stringTable = elf.getDynamicStringTable();
 		BinaryReader reader = elf.getReader();
 		for (ElfDynamic dynamic : table.getDynamics(DT_SCE_IMPORT_LIB)) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			long value = dynamic.getValue();
 			long offset =  value & 0xffffffffL;
 			long id = value >> 48;

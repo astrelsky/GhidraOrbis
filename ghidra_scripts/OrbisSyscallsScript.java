@@ -35,8 +35,8 @@ import ghidra.app.util.opinion.ElfLoader;
 import ghidra.framework.Application;
 import ghidra.program.model.address.*;
 import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.lang.BasicCompilerSpec;
 import ghidra.program.model.lang.Register;
+import ghidra.program.model.lang.SpaceNames;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.pcode.PcodeOp;
@@ -63,6 +63,9 @@ public class OrbisSyscallsScript extends GhidraScript {
 	//this is the name of the userop (aka CALLOTHER) in the pcode translation of the
 	//native "syscall" instruction
 	private static final String SYSCALL_X64_CALLOTHER = "syscall";
+
+	//a set of names of all syscalls that do not return
+	private static final Set<String> noreturnSyscalls = Set.of("exit", "thr_exit");
 
 	//tests whether an instruction is making a system call
 	private Predicate<Instruction> tester;
@@ -110,8 +113,9 @@ public class OrbisSyscallsScript extends GhidraScript {
 					" to run this script");
 				return;
 			}
-			Address startAddr = currentProgram.getAddressFactory().getAddressSpace(
-				BasicCompilerSpec.OTHER_SPACE_NAME).getAddress(0x0L);
+			Address startAddr = currentProgram.getAddressFactory()
+					.getAddressSpace(SpaceNames.OTHER_SPACE_NAME)
+					.getAddress(0x0L);
 			AddUninitializedMemoryBlockCmd cmd = new AddUninitializedMemoryBlockCmd(
 				SYSCALL_SPACE_NAME, null, this.getClass().getName(), startAddr,
 				SYSCALL_SPACE_LENGTH, true, true, true, false, true);
@@ -158,18 +162,24 @@ public class OrbisSyscallsScript extends GhidraScript {
 			Long offset = entry.getValue();
 			Address callTarget = syscallSpace.getAddress(offset);
 			Function callee = currentProgram.getFunctionManager().getFunctionAt(callTarget);
-			String funcName = "syscall_" + String.format("%08X", offset);
 			if (callee == null) {
-				if (syscallNumbersToNames.containsKey(offset)) {
+				String funcName = "syscall_" + String.format("%08X", offset);
+				if (syscallNumbersToNames.get(offset) != null) {
 					funcName = syscallNumbersToNames.get(offset);
 				}
 				callee = createFunction(callTarget, funcName);
 				callee.setCallingConvention(callingConvention);
+
+				//check if the function name is one of the non-returning syscalls
+				if (noreturnSyscalls.contains(funcName)) {
+					callee.setNoReturn(true);
+				}
 			} else if (syscallNumbersToNames.containsKey(offset)) {
 				callee.setName(syscallNumbersToNames.get(offset), SourceType.USER_DEFINED);
 			}
-			Reference ref = currentProgram.getReferenceManager().addMemoryReference(callSite,
-				callTarget, overrideType, SourceType.USER_DEFINED, Reference.MNEMONIC);
+			Reference ref = currentProgram.getReferenceManager()
+				.addMemoryReference(callSite, callTarget, overrideType, SourceType.USER_DEFINED,
+					Reference.MNEMONIC);
 			//overriding references must be primary to be active
 			currentProgram.getReferenceManager().setPrimary(ref, true);
 		}
@@ -188,14 +198,23 @@ public class OrbisSyscallsScript extends GhidraScript {
 	}
 
 	//TODO: better error checking!
-	private Map<Long, String> getSyscallNumberMap() {
+	private Map<Long, String> getSyscallNumberMap() throws CancelledException {
 		Map<Long, String> syscallMap = new HashMap<>();
-		ResourceFile rFile = Application.findDataFileInAnyModule(syscallFileName);
-		if (rFile == null) {
-			popup("Error opening syscall number file, using default names");
-			return syscallMap;
+		
+		boolean useStandard = askYesNo("Syscall file", "Use standard syscall names?");
+		File file = null;
+		if(useStandard) {
+			ResourceFile rFile = Application.findDataFileInAnyModule(syscallFileName);
+			if (rFile == null) {
+				popup("Error opening syscall number file, using default names");
+				return syscallMap;
+			}
+			file = rFile.getFile(false);
+		} else {
+			file = askFile("Select syscall dump", "Open");
 		}
-		try (FileReader fReader = new FileReader(rFile.getFile(false));
+
+		try (FileReader fReader = new FileReader(file);
 				BufferedReader bReader = new BufferedReader(fReader)) {
 			String line = null;
 			while ((line = bReader.readLine()) != null) {
@@ -226,7 +245,7 @@ public class OrbisSyscallsScript extends GhidraScript {
 			TaskMonitor tMonitor) throws CancelledException {
 		Map<Function, Set<Address>> funcsToCalls = new HashMap<>();
 		for (Function func : program.getFunctionManager().getFunctionsNoStubs(true)) {
-			tMonitor.checkCanceled();
+			tMonitor.checkCancelled();
 			for (Instruction inst : program.getListing().getInstructions(func.getBody(), true)) {
 				if (tester.test(inst)) {
 					Set<Address> callSites = funcsToCalls.get(func);
@@ -257,7 +276,7 @@ public class OrbisSyscallsScript extends GhidraScript {
 		Register syscallReg = program.getLanguage().getRegister(syscallRegister);
 		for (Function func : funcsToCalls.keySet()) {
 			Address start = func.getEntryPoint();
-			ContextEvaluator eval = new ConstantPropagationContextEvaluator(true);
+			ContextEvaluator eval = new ConstantPropagationContextEvaluator(monitor, true);
 			SymbolicPropogator symEval = new SymbolicPropogator(program);
 			symEval.flowConstants(start, func.getBody(), eval, true, tMonitor);
 			for (Address callSite : funcsToCalls.get(func)) {
@@ -284,8 +303,10 @@ public class OrbisSyscallsScript extends GhidraScript {
 		for (PcodeOp op : inst.getPcode()) {
 			if (op.getOpcode() == PcodeOp.CALLOTHER) {
 				int index = (int) op.getInput(0).getOffset();
-				if (inst.getProgram().getLanguage().getUserDefinedOpName(index).equals(
-					SYSCALL_X64_CALLOTHER)) {
+				if (inst.getProgram()
+						.getLanguage()
+						.getUserDefinedOpName(index)
+						.equals(SYSCALL_X64_CALLOTHER)) {
 					retVal = true;
 				}
 			}
