@@ -182,8 +182,8 @@ public class GhidraOrbisIplLoader extends AbstractProgramLoader {
 
 	@Override
 	protected void postLoadProgramFixups(List<Loaded<Program>> loadedPrograms, Project project,
-			List<Option> options, MessageLog log, TaskMonitor monitor)
-			throws CancelledException, IOException {
+			LoadSpec loadSpec, List<Option> options, MessageLog log, TaskMonitor monitor)
+			throws CancelledException, IOException  {
 		if (loadedPrograms.isEmpty()) {
 			return;
 		}
