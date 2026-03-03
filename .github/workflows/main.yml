@@ -11,14 +11,14 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ghidra: ['12.0']
+        ghidra: ['12.0', '12.0.1', '12.0.2', '12.0.3']
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@main
 
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@main
         with:
           java-version: 21
           distribution: temurin
@@ -38,23 +38,25 @@ jobs:
           arguments: buildExtension -PGHIDRA_INSTALL_DIR=${{ env.GHIDRA_INSTALL_DIR }}
 
       - name: Upload GhidraOrbis Artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@main
         with:
+          name: ${{ matrix.ghidra }}
           path: dist/*.zip
           if-no-files-found: error
+          compression-level: 0
 
   push_release:
-    if: |
-      github.event_name == 'push' &&
-      github.repository == 'astrelsky/GhidraOrbis'
+    if: github.event_name == 'push'
     needs: build_extensions
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@main
       - name: Download artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@main
+        with:
+          merge-multiple: true
       - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create 1.0${{ GITHUB.RUN_NUMBER }} artifact/*.zip --target ${{ GITHUB.SHA }} -t 1.0${{ GITHUB.RUN_NUMBER }}
+        run: gh release create 1.0${{ GITHUB.RUN_NUMBER }} ./*.zip --target ${{ GITHUB.SHA }} -t 1.0${{ GITHUB.RUN_NUMBER }}
 
