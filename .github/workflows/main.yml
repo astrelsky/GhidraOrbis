@@ -43,6 +43,7 @@ jobs:
           name: ${{ matrix.ghidra }}
           path: dist/*.zip
           if-no-files-found: error
+          compression-level: 0
 
   push_release:
     if: github.event_name == 'push'
