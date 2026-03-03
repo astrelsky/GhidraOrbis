@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ghidra: ['12.0']
+        ghidra: ['12.0', '12.0.1', '12.0.2', '12.0.3']
 
     steps:
       - name: Checkout
@@ -40,6 +40,7 @@ jobs:
       - name: Upload GhidraOrbis Artifact
         uses: actions/upload-artifact@main
         with:
+          name: ${{ matrix.ghidra }}
           path: dist/*.zip
           if-no-files-found: error
 
@@ -51,6 +52,8 @@ jobs:
       - uses: actions/checkout@main
       - name: Download artifacts
         uses: actions/download-artifact@main
+        with:
+          merge-multiple: true
       - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
