@@ -12,6 +12,7 @@ import ghidra.program.model.listing.*;
 import ghidra.program.model.symbol.*;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.InvalidInputException;
+import ghidra.util.Msg;
 import ghidra.util.task.TaskMonitor;
 
 import orbis.util.OrbisUtil;
@@ -104,10 +105,12 @@ public class NIDAnalyzer extends AbstractAnalyzer {
 					return;
 				}
 			}
+			String origName = name;
 			name = name.substring(0, 11);
 			if (db.containsKey(name)) {
 				name = db.get(name);
 			}
+			Msg.info(this, "NIDAnalyzer: Resolving symbol NID. Original name: " + origName + " -> Library: " + (ns != null ? ns.getName() : "Global") + ", Resolved name: " + name);
 			if (ns == null) {
 				ns = s.getProgram().getGlobalNamespace();
 			}
