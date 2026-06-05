@@ -63,6 +63,10 @@ public class OrbisElfHeader extends ElfHeader {
 			invoke("parseGNU_r");
 		} else {
 			parseDynamicTable();
+			parseDynamicStringTable();
+			parseDynamicLibraryNames();
+			parseDynamicSymbolTable();
+			parseRelocationTables();
 		}
 	}
 
@@ -266,6 +270,7 @@ public class OrbisElfHeader extends ElfHeader {
 			ElfRelocationTable relocTable = createElfRelocationTable(getReader(),
 				this, null, fileOffset, addrOffset, tableSize, tableEntrySize,
 				addendTypeReloc, dynamicSymbolTable, null, TableFormat.DEFAULT);
+			Msg.info(this, "OrbisElfHeader: Parsed Relocation Table (" + relocTableAddrType.name + "). FileOffset: 0x" + Long.toHexString(fileOffset) + ", AddrOffset: 0x" + Long.toHexString(addrOffset) + ", Size: " + tableSize + ", EntrySize: " + tableEntrySize);
 			relocationTableList.add(relocTable);
 		}
 		catch (NotFoundException e) {
@@ -327,6 +332,9 @@ public class OrbisElfHeader extends ElfHeader {
 	}
 
 	public void parseDynamicStringTable() throws IOException {
+		if (getDynamicStringTable() != null) {
+			return;
+		}
 		List<ElfStringTable> tables = new ArrayList<>(List.of(getStringTables()));
 		ElfProgramHeader phdr = getDynlibData();
 		ElfDynamicTable dynamicTable = getDynamicTable();
@@ -359,6 +367,7 @@ public class OrbisElfHeader extends ElfHeader {
 				return;
 			}
 			ElfStringTable tbl = new ElfStringTable(this, null, fileOffset, addrOffset, stringTableSize);
+			Msg.info(this, "OrbisElfHeader: Parsed Dynamic String Table. FileOffset: 0x" + Long.toHexString(fileOffset) + ", AddrOffset: 0x" + Long.toHexString(addrOffset) + ", Size: " + stringTableSize);
 			setDynamicStringTable(tbl);
 			tables.add(tbl);
 			setStringTables(tables.toArray(ElfStringTable[]::new));
@@ -368,6 +377,9 @@ public class OrbisElfHeader extends ElfHeader {
 	}
 
 	public void parseDynamicSymbolTable() throws IOException {
+		if (getDynamicSymbolTable() != null) {
+			return;
+		}
 		List<ElfSymbolTable> tables = new ArrayList<>(List.of(getSymbolTables()));
 		ElfDynamicTable dynamicTable = getDynamicTable();
 		ElfStringTable dynamicStringTable = getDynamicStringTable();
@@ -417,6 +429,7 @@ public class OrbisElfHeader extends ElfHeader {
 			ElfSymbolTable tbl = new ElfSymbolTable(
 				reader, this, null, fileOffset, addrOffset,
 				tableSize, tableEntrySize, dynamicStringTable, null, true);
+			Msg.info(this, "OrbisElfHeader: Parsed Dynamic Symbol Table. FileOffset: 0x" + Long.toHexString(fileOffset) + ", AddrOffset: 0x" + Long.toHexString(addrOffset) + ", Size: " + tableSize + ", EntrySize: " + tableEntrySize);
 			setDynamicSymbolTable(tbl);
 			tables.add(tbl);
 			setSymbolTables(tables.toArray(ElfSymbolTable[]::new));

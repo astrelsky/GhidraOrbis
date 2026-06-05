@@ -11,6 +11,7 @@ import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
+import ghidra.util.Msg;
 import ghidra.util.task.TaskMonitor;
 
 public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
@@ -34,6 +35,10 @@ public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
 	@Override
 	public void makeBlock() throws Exception {
 		ProgramFragment frag = getPltGotFragment();
+		if (frag == null) {
+			Msg.warn(this, "ProgramReadOnlyBlockMaker: .got.plt fragment is null!");
+			return;
+		}
 		Address addr = frag.getMinAddress();
 		if (addr != null) {
 			monitor.setMessage("Scanning .got.plt");
@@ -51,6 +56,10 @@ public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
 
 	void createPltGotFragment(Address start) throws Exception {
 		ProgramFragment frag = getPltGotFragment();
+		if (frag == null) {
+			Msg.warn(this, "ProgramReadOnlyBlockMaker: .got.plt fragment is null in createPltGotFragment!");
+			return;
+		}
 		Program program = getProgram();
 		Memory mem = program.getMemory();
 		Address addr = start;
@@ -73,6 +82,10 @@ public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
 		monitor.setMessage("Finding trampolines");
 		JumpSearcher searcher = new JumpSearcher(program, monitor);
 		ProgramFragment frag = getPltGotFragment();
+		if (frag == null) {
+			Msg.warn(this, "ProgramReadOnlyBlockMaker: .got.plt fragment is null in createTrampolines!");
+			return null;
+		}
 		if (frag.getMinAddress() == null) {
 			SymbolTable st = program.getSymbolTable();
 			List<Symbol> syms = st.getGlobalSymbols("_DT_FINI");
@@ -87,7 +100,7 @@ public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
 			if (frag.getMinAddress() == null) {
 				createPltGotFragment(addr);
 			}
-			if (frag.contains(addr)) {
+			if (frag.getMinAddress() != null && frag.contains(addr)) {
 				break;
 			}
 		}
@@ -128,8 +141,13 @@ public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
 			this.mem = program.getMemory();
 			this.monitor = monitor;
 			MemoryBlock block = mem.getBlock(".text");
-			this.address = block.getStart();
-			this.end = block.getEnd();
+			if (block != null) {
+				this.address = block.getStart();
+				this.end = block.getEnd();
+			} else {
+				this.address = null;
+				this.end = null;
+			}
 		}
 
 		boolean isJump() throws Exception {
@@ -154,12 +172,17 @@ public class ProgramReadOnlyBlockMaker extends ReadOnlyBlockMaker {
 		}
 
 		Address getNextAddress() {
-			if (address == null) {
+			if (address == null || end == null) {
 				return null;
 			}
 			do {
+				Address nextAddr = address.next();
+				if (nextAddr == null) {
+					address = null;
+					break;
+				}
 				address = mem.findBytes(
-					address.next(), end, JMP_BYTES, JMP_MASK, true, monitor);
+					nextAddr, end, JMP_BYTES, JMP_MASK, true, monitor);
 			} while (address != null && address.getOffset() % 8 != 0);
 			return address;
 		}

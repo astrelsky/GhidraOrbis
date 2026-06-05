@@ -17,6 +17,7 @@ import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.scalar.Scalar;
 import ghidra.program.model.symbol.*;
+import ghidra.util.Msg;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.InvalidInputException;
@@ -313,6 +314,7 @@ public class OrbisElfExtension extends ElfExtension {
 			long offset =  value & 0xffffffffL;
 			long id = value >> 48;
 			String libName = stringTable.readString(reader, offset) + PRX_LIB_EXTENSION;
+			Msg.info(this, "OrbisElfExtension: Registered Import Library. ID: " + id + " -> " + libName);
 			man.addLibrary(libName, id);
 		}
 	}
@@ -373,30 +375,79 @@ public class OrbisElfExtension extends ElfExtension {
 		ElfProgramHeader[] phdrs = elf.getProgramHeaders(ElfProgramHeaderConstants.PT_GNU_EH_FRAME);
 		if (phdrs != null && phdrs.length == 1) {
 			try {
-				ElfProgramHeader phdr = phdrs[0];
-				Address addr = helper.getDefaultAddress(phdr.getVirtualAddress());
+				Address addr = helper.getDefaultAddress(phdrs[0].getVirtualAddress());
+				Msg.info(this, "OrbisElfExtension: fixing eh_frame_hdr at address " + addr);
 				Memory mem = program.getMemory();
 				MemoryBlock block = mem.getBlock(addr);
-				mem.split(block, addr);
-				block = mem.getBlock(addr);
-				block.setName(EH_FRAME_HDR);
-				Listing listing = program.getListing();
-				ProgramModule root = listing.getDefaultRootModule();
-				ProgramFragment fragment = root.createFragment(EH_FRAME_HDR);
-				fragment.move(block.getStart(), block.getEnd());
-				EhFrameHeaderSection section = new EhFrameHeaderSection(program);
-				section.analyze(monitor);
-				Reference[] refs = listing.getDataAfter(addr).getReferencesFrom();
-				if (refs != null && refs.length == 1) {
-					addr = refs[0].getToAddress();
-					block = mem.getBlock(addr);
-					mem.split(block, addr);
-					block = mem.getBlock(addr);
-					block.setName(EH_FRAME);
-					fragment = root.createFragment(EH_FRAME);
-					fragment.move(block.getStart(), block.getEnd());
+				if (block != null) {
+					if (addr.compareTo(block.getStart()) > 0 && addr.compareTo(block.getEnd()) < 0) {
+						mem.split(block, addr);
+						block = mem.getBlock(addr);
+					}
+					block.setName(EH_FRAME_HDR);
+					Listing listing = program.getListing();
+					ProgramModule root = listing.getDefaultRootModule();
+					if (root != null) {
+						ProgramFragment fragment = null;
+						for (String treeName : listing.getTreeNames()) {
+							fragment = listing.getFragment(treeName, EH_FRAME_HDR);
+							if (fragment != null) {
+								break;
+							}
+						}
+						if (fragment == null) {
+							try {
+								fragment = root.createFragment(EH_FRAME_HDR);
+							} catch (Exception e) {
+								Msg.warn(this, "OrbisElfExtension: failed to create fragment " + EH_FRAME_HDR + ": " + e.getMessage());
+							}
+						}
+						if (fragment != null) {
+							fragment.move(block.getStart(), block.getEnd());
+						}
+					}
+					
+					EhFrameHeaderSection section = new EhFrameHeaderSection(program);
+					section.analyze(monitor);
+					
+					Data data = listing.getDataAfter(addr);
+					if (data != null) {
+						Reference[] refs = data.getReferencesFrom();
+						if (refs != null && refs.length == 1) {
+							addr = refs[0].getToAddress();
+							Msg.info(this, "OrbisElfExtension: fixing eh_frame referenced from eh_frame_hdr at address " + addr);
+							block = mem.getBlock(addr);
+							if (block != null) {
+								if (addr.compareTo(block.getStart()) > 0 && addr.compareTo(block.getEnd()) < 0) {
+									mem.split(block, addr);
+									block = mem.getBlock(addr);
+								}
+								block.setName(EH_FRAME);
+								if (root != null) {
+									ProgramFragment fragment = null;
+									for (String treeName : listing.getTreeNames()) {
+										fragment = listing.getFragment(treeName, EH_FRAME);
+										if (fragment != null) {
+											break;
+										}
+									}
+									if (fragment == null) {
+										try {
+											fragment = root.createFragment(EH_FRAME);
+										} catch (Exception e) {
+											Msg.warn(this, "OrbisElfExtension: failed to create fragment " + EH_FRAME + ": " + e.getMessage());
+										}
+									}
+									if (fragment != null) {
+										fragment.move(block.getStart(), block.getEnd());
+									}
+								}
+							}
+						}
+					}
 				}
 			} catch (Exception e) {
+				Msg.error(this, "OrbisElfExtension: error in fixEhFrame", e);
 				helper.log(e);
 			}
 		}
