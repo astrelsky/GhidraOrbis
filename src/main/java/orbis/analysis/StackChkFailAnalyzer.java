@@ -68,6 +68,11 @@ public class StackChkFailAnalyzer extends AbstractKernelAnalyzer {
 	}
 
 	private static boolean defineFunction(Program program, Address address, MessageLog log) {
+		if (address == null) {
+			log.appendMsg(getName(),
+				"Could not resolve absolute address for __stack_chk_fail");
+			return true; // not a failure, just not found
+		}
 		try {
 			FunctionManager man = program.getFunctionManager();
 			Function function = man.getFunctionAt(address);
