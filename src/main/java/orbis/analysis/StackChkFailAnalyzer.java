@@ -77,6 +77,10 @@ public class StackChkFailAnalyzer extends AbstractKernelAnalyzer {
 				cmd.applyTo(program);
 				function = cmd.getFunction();
 			}
+			if (function == null) {
+				log.appendMsg(getName(), "Failed to create or find function at " + address);
+				return false;
+			}
 			function.setName(FUNCTION_NAME, SourceType.IMPORTED);
 			function.setReturnType(VoidDataType.dataType, SourceType.IMPORTED);
 			function.setCallingConvention(CompilerSpec.CALLING_CONVENTION_stdcall);
