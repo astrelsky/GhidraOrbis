@@ -83,7 +83,20 @@ public class StackChkFailAnalyzer extends AbstractKernelAnalyzer {
 				function = cmd.getFunction();
 			}
 			if (function == null) {
-				log.appendMsg(getName(), "Failed to create or find function at " + address);
+				MemoryBlock block = program.getMemory().getBlock(address);
+				if (block == null) {
+					log.appendMsg(getName(),
+						"Failed to create function at " + address +
+						" (address not in any memory block)");
+				} else if (!block.isExecute()) {
+					log.appendMsg(getName(),
+						"Failed to create function at " + address +
+						" in non-executable block: " + block.getName());
+				} else {
+					log.appendMsg(getName(),
+						"Failed to create function at " + address +
+						" in executable block: " + block.getName() + " (unexpected)");
+				}
 				return false;
 			}
 			function.setName(FUNCTION_NAME, SourceType.IMPORTED);
