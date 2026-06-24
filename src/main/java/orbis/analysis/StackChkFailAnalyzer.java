@@ -63,11 +63,21 @@ public class StackChkFailAnalyzer extends AbstractKernelAnalyzer {
 			return true;
 		}
 		address = addresses.iterator().next().subtract(pointerSize);
-		address = getAbsoluteAddress(program, address);
-		return defineFunction(program, address, log);
+		Address stackCheckFailAddress = getAbsoluteAddress(program, address);
+		if (stackCheckFailAddress == null) {
+			log.appendMsg(getName(),
+				"Failed to read __stack_chk_fail pointer at " + address + " this should not occur.");
+			return true;
+		}
+		return defineFunction(program, stackCheckFailAddress, log);
 	}
 
 	private static boolean defineFunction(Program program, Address address, MessageLog log) {
+		if (address == null) {
+			log.appendMsg(getName(),
+				"Could not resolve absolute address for __stack_chk_fail");
+			return true; // not a failure, just not found
+		}
 		try {
 			FunctionManager man = program.getFunctionManager();
 			Function function = man.getFunctionAt(address);
@@ -76,6 +86,23 @@ public class StackChkFailAnalyzer extends AbstractKernelAnalyzer {
 				CreateFunctionCmd cmd = new CreateFunctionCmd(entries, SourceType.IMPORTED);
 				cmd.applyTo(program);
 				function = cmd.getFunction();
+			}
+			if (function == null) {
+				MemoryBlock block = program.getMemory().getBlock(address);
+				if (block == null) {
+					log.appendMsg(getName(),
+						"Failed to create function at " + address +
+						" (address not in any memory block)");
+				} else if (!block.isExecute()) {
+					log.appendMsg(getName(),
+						"Failed to create function at " + address +
+						" in non-executable block: " + block.getName());
+				} else {
+					log.appendMsg(getName(),
+						"Failed to create function at " + address +
+						" in executable block: " + block.getName() + " (unexpected)");
+				}
+				return false;
 			}
 			function.setName(FUNCTION_NAME, SourceType.IMPORTED);
 			function.setReturnType(VoidDataType.dataType, SourceType.IMPORTED);
