@@ -63,7 +63,11 @@ public class StackChkFailAnalyzer extends AbstractKernelAnalyzer {
 			return true;
 		}
 		address = addresses.iterator().next().subtract(pointerSize);
-		address = getAbsoluteAddress(program, address);
+		Address stackCheckFailAddress = getAbsoluteAddress(program, address);
+		if (stackCheckFailAddress == null) {
+		    log.appendMsg(getName(), "Failed to read __stack_chk_fail pointer at " + address + " this should not occur.");
+		    return true;   
+		}
 		return defineFunction(program, address, log);
 	}
 
