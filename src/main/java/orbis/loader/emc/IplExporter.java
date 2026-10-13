@@ -33,6 +33,13 @@ public class IplExporter extends Exporter {
         super("IplExporter", "", null);
     }
 
+    // Abstract in Exporter since Ghidra 12.1 (was a default implementation in 12.0.x).
+    // Same behavior as the old default, so this is compatible with both.
+    @Override
+    public boolean canExportDomainObject(Class<? extends DomainObject> domainObjectClass) {
+        return Program.class.isAssignableFrom(domainObjectClass);
+    }
+
     @Override
 	public boolean export(File file, DomainObject domainObj, AddressSetView addrSet,
 			TaskMonitor monitor) throws IOException, ExporterException {
