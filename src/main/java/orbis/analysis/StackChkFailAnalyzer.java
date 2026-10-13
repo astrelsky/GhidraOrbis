@@ -74,7 +74,7 @@ public class StackChkFailAnalyzer extends AbstractKernelAnalyzer {
 
 	private static boolean defineFunction(Program program, Address address, MessageLog log) {
 		if (address == null) {
-			log.appendMsg(getName(),
+			log.appendMsg(NAME,
 				"Could not resolve absolute address for __stack_chk_fail");
 			return true; // not a failure, just not found
 		}
@@ -90,15 +90,15 @@ public class StackChkFailAnalyzer extends AbstractKernelAnalyzer {
 			if (function == null) {
 				MemoryBlock block = program.getMemory().getBlock(address);
 				if (block == null) {
-					log.appendMsg(getName(),
+					log.appendMsg(NAME,
 						"Failed to create function at " + address +
 						" (address not in any memory block)");
 				} else if (!block.isExecute()) {
-					log.appendMsg(getName(),
+					log.appendMsg(NAME,
 						"Failed to create function at " + address +
 						" in non-executable block: " + block.getName());
 				} else {
-					log.appendMsg(getName(),
+					log.appendMsg(NAME,
 						"Failed to create function at " + address +
 						" in executable block: " + block.getName() + " (unexpected)");
 				}
